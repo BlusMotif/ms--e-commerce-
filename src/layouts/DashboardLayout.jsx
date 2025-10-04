@@ -30,6 +30,26 @@ const DashboardLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [products, setProducts] = useState([]);
+
+  // Fetch products for agent filtering
+  useEffect(() => {
+    if (role !== 'agent') return;
+
+    const productsRef = ref(database, 'products');
+    const unsubscribe = onValue(productsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const productsArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setProducts(productsArray);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [role]);
 
   // Fetch pending orders count for admin/agent
   useEffect(() => {
@@ -55,8 +75,9 @@ const DashboardLayout = () => {
           count = ordersArray.filter(order => {
             const hasPendingStatus = order.status === 'pending' || order.status === 'processing';
             const hasAgentProducts = order.items?.some(item => {
-              // Check if any item belongs to this agent
-              return item.agentId === user.uid || item.createdBy === user.uid;
+              // Find the product to check if it belongs to this agent
+              const product = products.find(p => p.name === item.name || p.id === item.productId);
+              return product && (product.agentId === user.uid || product.createdBy === user.uid);
             });
             return hasPendingStatus && hasAgentProducts;
           }).length;
@@ -69,7 +90,7 @@ const DashboardLayout = () => {
     });
 
     return () => unsubscribe();
-  }, [role, user]);
+  }, [role, user, products]);
 
   const handleLogout = async () => {
     try {

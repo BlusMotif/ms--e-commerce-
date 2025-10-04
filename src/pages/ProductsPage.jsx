@@ -80,8 +80,10 @@ const ProductsPage = () => {
     .filter((product) => {
       // Filter by category
       if (selectedCategory !== 'all') {
-        // Find category by slug
-        const category = categories.find(cat => cat.slug === selectedCategory);
+        // Try to find category by slug first, then by ID
+        const categoryBySlug = categories.find(cat => cat.slug === selectedCategory);
+        const categoryById = categories.find(cat => cat.id === selectedCategory);
+        const category = categoryBySlug || categoryById;
         
         // If category is found, filter by categoryId
         if (category) {
@@ -89,8 +91,10 @@ const ProductsPage = () => {
             return false;
           }
         } else {
-          // If category slug not found, don't show any products
-          return false;
+          // If category slug/ID not found, try direct match with product categoryId
+          if (product.categoryId !== selectedCategory) {
+            return false;
+          }
         }
       }
       // Filter by search term

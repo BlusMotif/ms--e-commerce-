@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuthStore } from './store/authStore';
+import useNotificationStore from './store/notificationStore';
 import ScrollToTop from './components/ScrollToTop';
 
 // Layouts
@@ -17,6 +18,7 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import LoginPage from './pages/auth/LoginPage';
 import SignupPage from './pages/auth/SignupPage';
+import ResetPasswordPage from './pages/auth/ResetPasswordPage';
 import NotificationsPage from './pages/NotificationsPage';
 
 // Customer Pages
@@ -65,6 +67,18 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 
 function App() {
+  const { markOrdersSeen } = useNotificationStore();
+
+  // Global click handler to stop notification sound on any interaction
+  useEffect(() => {
+    const handleGlobalClick = () => {
+      markOrdersSeen();
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => document.removeEventListener('click', handleGlobalClick);
+  }, [markOrdersSeen]);
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -79,6 +93,7 @@ function App() {
             <Route path="cart" element={<CartPage />} />
             <Route path="login" element={<LoginPage />} />
             <Route path="signup" element={<SignupPage />} />
+            <Route path="reset-password" element={<ResetPasswordPage />} />
           </Route>
 
           {/* Notifications (requires auth) */}

@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, X, Save, Image as ImageIcon, ArrowUp, ArrowDown } f
 
 const AdminBanners = () => {
   const [banners, setBanners] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
@@ -18,6 +19,7 @@ const AdminBanners = () => {
     subtitle: '',
     buttonText: '',
     buttonLink: '',
+    categoryId: '', // Add category selection
     active: true,
     order: 0,
   });
@@ -40,7 +42,23 @@ const AdminBanners = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Fetch categories for category selector
+    const categoriesRef = ref(database, 'categories');
+    const unsubscribeCategories = onValue(categoriesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const categoriesArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setCategories(categoriesArray);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeCategories();
+    };
   }, []);
 
   const handleInputChange = (e) => {
@@ -106,6 +124,7 @@ const AdminBanners = () => {
         subtitle: formData.subtitle,
         buttonText: formData.buttonText,
         buttonLink: formData.buttonLink,
+        categoryId: formData.categoryId, // Save category ID
         active: formData.active,
         order: parseInt(formData.order),
         image: imageUrl,
@@ -141,6 +160,7 @@ const AdminBanners = () => {
       subtitle: banner.subtitle || '',
       buttonText: banner.buttonText || '',
       buttonLink: banner.buttonLink || '',
+      categoryId: banner.categoryId || '', // Load category ID
       active: banner.active !== false,
       order: banner.order || 0,
     });
@@ -187,6 +207,7 @@ const AdminBanners = () => {
       subtitle: '',
       buttonText: '',
       buttonLink: '',
+      categoryId: '', // Reset category ID
       active: true,
       order: banners.length,
     });
@@ -260,6 +281,11 @@ const AdminBanners = () => {
                       <span className="text-sm font-medium">{banner.buttonText}</span>
                       {banner.buttonLink && (
                         <span className="text-sm text-gray-500 ml-2">→ {banner.buttonLink}</span>
+                      )}
+                      {!banner.buttonLink && banner.categoryId && (
+                        <span className="text-sm text-gray-500 ml-2">
+                          → Category: {categories.find(c => c.id === banner.categoryId)?.name || 'Unknown'}
+                        </span>
                       )}
                     </div>
                   )}
@@ -410,17 +436,42 @@ const AdminBanners = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Button Link
+                    Category (Optional)
                   </label>
-                  <input
-                    type="text"
-                    name="buttonLink"
-                    value={formData.buttonLink}
+                  <select
+                    name="categoryId"
+                    value={formData.categoryId}
                     onChange={handleInputChange}
                     className="input"
-                    placeholder="e.g., /products"
-                  />
+                  >
+                    <option value="">Select a category</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Button will redirect to this category when clicked
+                  </p>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Custom Link (Optional)
+                </label>
+                <input
+                  type="text"
+                  name="buttonLink"
+                  value={formData.buttonLink}
+                  onChange={handleInputChange}
+                  className="input"
+                  placeholder="e.g., /products or leave empty to use category"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Custom link overrides category selection
+                </p>
               </div>
 
               <div>

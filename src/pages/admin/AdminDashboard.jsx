@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ref, onValue, remove, set } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import notificationSound from '../../utils/notificationSound';
+import useNotificationStore from '../../store/notificationStore';
 import { 
   ShoppingCart, 
   Package, 
@@ -36,10 +37,11 @@ const AdminDashboard = () => {
   const [agentLogs, setAgentLogs] = useState([]);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(notificationSound.getEnabled());
-  const previousOrderCountRef = useRef(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [hasUnseenOrders, setHasUnseenOrders] = useState(false);
+  
+  // Use global notification store
+  const { hasUnseenOrders, updateOrderCount, markOrdersSeen } = useNotificationStore();
 
   useEffect(() => {
     const ordersRef = ref(database, 'orders');
@@ -58,15 +60,12 @@ const AdminDashboard = () => {
           return !isCancelled || isCashOnDelivery;
         });
         
-        // Check for new orders and start looping sound
-        if (previousOrderCountRef.current > 0 && ordersArray.length > previousOrderCountRef.current) {
-          // New order detected! Start looping sound
-          notificationSound.startLoop();
-          setHasUnseenOrders(true);
-        }
-        previousOrderCountRef.current = ordersArray.length;
+        // Use global store to track order count and trigger sound
+        updateOrderCount(ordersArray.length);
         
         setOrders(ordersArray);
+      } else {
+        setOrders([]);
       }
     });
 
@@ -79,7 +78,10 @@ const AdminDashboard = () => {
           ...data[key],
         }));
         setProducts(productsArray);
+      } else {
+        setProducts([]);
       }
+      // Always set loading to false after products are loaded
       setLoading(false);
     });
 
@@ -92,6 +94,8 @@ const AdminDashboard = () => {
           ...data[key],
         }));
         setUsers(usersArray);
+      } else {
+        setUsers([]);
       }
     });
 
@@ -116,17 +120,18 @@ const AdminDashboard = () => {
       unsubscribeUsers();
       unsubscribeLogs();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Show latest orders as notifications (not announcements)
   useEffect(() => {
     // Use the orders already fetched to create notifications - show ALL orders
     const recentOrders = orders
-      .sort((a, b) => b.createdAt - a.createdAt)
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
       .map(order => ({
         id: order.id,
         title: `New Order #${order.id.slice(0, 8)}`,
-        message: `${order.customerName} placed an order for GH₵ ${order.grandTotal.toFixed(2)}`,
+        message: `${order.customerName || 'Customer'} placed an order for GH₵ ${(order.grandTotal || order.total || 0).toFixed(2)}`,
         type: order.isPaid || order.paymentMethod === 'cash' ? 'success' : 'info',
         createdAt: order.createdAt,
         source: 'order',
@@ -135,18 +140,7 @@ const AdminDashboard = () => {
     setNotifications(recentOrders);
   }, [orders]);
 
-  // Stop sound on any click/interaction
-  useEffect(() => {
-    const handleAnyClick = () => {
-      if (notificationSound.isLooping) {
-        notificationSound.stopLoop();
-        setHasUnseenOrders(false);
-      }
-    };
-
-    document.addEventListener('click', handleAnyClick);
-    return () => document.removeEventListener('click', handleAnyClick);
-  }, []);
+  // Stop sound on any click/interaction - REMOVED from here, moved to App.jsx for global effect
 
   // Function to delete all orders (requires authentication)
   const handleDeleteAllOrders = async () => {
@@ -264,8 +258,12 @@ const AdminDashboard = () => {
   };
 
   // Get sold items from paid orders with product details
-  const soldItems = paidOrders.flatMap(order => 
-    order.items.map(item => {
+  const soldItems = paidOrders.flatMap(order => {
+    // Check if order has items array
+    if (!order.items || !Array.isArray(order.items)) {
+      return [];
+    }
+    return order.items.map(item => {
       // Find the actual product to get the correct image
       const product = products.find(p => p.name === item.name || p.id === item.productId);
       return {
@@ -274,11 +272,15 @@ const AdminDashboard = () => {
         orderId: order.id,
         orderDate: order.createdAt
       };
-    })
-  );
+    });
+  });
 
   // Group sold items by product name and calculate totals
   const soldProductsMap = soldItems.reduce((acc, item) => {
+    // Skip items without a name
+    if (!item.name) {
+      return acc;
+    }
     if (!acc[item.name]) {
       acc[item.name] = {
         name: item.name,
@@ -288,8 +290,8 @@ const AdminDashboard = () => {
         sales: 0
       };
     }
-    acc[item.name].totalQuantity += item.quantity;
-    acc[item.name].totalRevenue += item.price * item.quantity;
+    acc[item.name].totalQuantity += item.quantity || 0;
+    acc[item.name].totalRevenue += (item.price || 0) * (item.quantity || 0);
     acc[item.name].sales += 1;
     return acc;
   }, {});
@@ -299,7 +301,7 @@ const AdminDashboard = () => {
     .slice(0, 10);
 
   const recentOrders = orders
-    .sort((a, b) => b.createdAt - a.createdAt)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
     .slice(0, 5);
 
   if (loading) {
@@ -317,18 +319,17 @@ const AdminDashboard = () => {
   };
 
   const handleNotificationClick = () => {
-    // Stop looping sound when notifications are opened
-    notificationSound.stopLoop();
-    setHasUnseenOrders(false);
+    // Stop looping sound when notifications are opened - use global store
+    markOrdersSeen();
     setShowNotifications(!showNotifications);
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8 pb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">📊 Business Dashboard</h1>
-          <p className="text-gray-600 mt-1">Complete overview of your store performance</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📊 Business Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Complete overview of your store performance</p>
         </div>
         <div className="flex items-center gap-3">
           {/* Notifications Bell */}
@@ -417,142 +418,146 @@ const AdminDashboard = () => {
         </div>
       </div>
 
+      {/* Revenue Card with better spacing */}
       <div className="card bg-gradient-to-r from-green-500 to-emerald-600 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-green-100 text-sm mb-2">💰 Total Revenue (Paid Orders)</p>
-            <p className="text-5xl font-bold">GH₵ {stats.totalRevenue.toFixed(2)}</p>
-            <p className="text-green-100 mt-3 flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <p className="text-green-100 text-xs sm:text-sm mb-2">💰 Total Revenue (Paid Orders)</p>
+            <p className="text-3xl sm:text-4xl lg:text-5xl font-bold">GH₵ {stats.totalRevenue.toFixed(2)}</p>
+            <p className="text-green-100 mt-2 sm:mt-3 flex items-center gap-2 text-sm">
               <ShoppingBag className="w-4 h-4" />
               From {stats.paidOrders} paid orders out of {stats.totalOrders} total
             </p>
           </div>
-          <DollarSign className="w-24 h-24 text-green-200 opacity-50" />
+          <DollarSign className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 text-green-200 opacity-50" />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards with better gaps */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         <div className="card bg-blue-50 border-l-4 border-blue-500">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-blue-700 text-sm font-medium mb-1">📦 Total Orders</p>
-              <p className="text-3xl font-bold text-blue-900">{stats.totalOrders}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-blue-700 text-xs sm:text-sm font-medium mb-1">📦 Total Orders</p>
+              <p className="text-2xl sm:text-3xl font-bold text-blue-900">{stats.totalOrders}</p>
               <div className="mt-2 space-y-1">
                 <p className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  {stats.completedOrders} completed
+                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{stats.completedOrders} completed</span>
                 </p>
                 <p className="text-xs text-yellow-600 flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {stats.pendingOrders} pending
+                  <Clock className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{stats.pendingOrders} pending</span>
                 </p>
               </div>
             </div>
-            <ShoppingCart className="w-10 h-10 text-blue-500" />
+            <ShoppingCart className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 flex-shrink-0" />
           </div>
         </div>
 
         <div className="card bg-purple-50 border-l-4 border-purple-500">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-purple-700 text-sm font-medium mb-1">📦 Products</p>
-              <p className="text-3xl font-bold text-purple-900">{stats.totalProducts}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-purple-700 text-xs sm:text-sm font-medium mb-1">📦 Products</p>
+              <p className="text-2xl sm:text-3xl font-bold text-purple-900">{stats.totalProducts}</p>
               <div className="mt-2 space-y-1">
                 <p className="text-xs text-green-600 flex items-center gap-1">
-                  <CheckCircle className="w-3 h-3" />
-                  {stats.inStockProducts} in stock
+                  <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{stats.inStockProducts} in stock</span>
                 </p>
                 <p className="text-xs text-red-600 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
-                  {stats.outOfStockProducts} out of stock
+                  <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{stats.outOfStockProducts} out</span>
                 </p>
               </div>
             </div>
-            <Package className="w-10 h-10 text-purple-500" />
+            <Package className="w-8 h-8 sm:w-10 sm:h-10 text-purple-500 flex-shrink-0" />
           </div>
         </div>
 
         <div className="card bg-orange-50 border-l-4 border-orange-500">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-orange-700 text-sm font-medium mb-1">👥 Agents</p>
-              <p className="text-3xl font-bold text-orange-900">{stats.totalAgents}</p>
-              <p className="text-xs text-orange-600 mt-2">Selling your products</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-orange-700 text-xs sm:text-sm font-medium mb-1">👥 Agents</p>
+              <p className="text-2xl sm:text-3xl font-bold text-orange-900">{stats.totalAgents}</p>
+              <p className="text-xs text-orange-600 mt-2 truncate">Selling your products</p>
             </div>
-            <Users className="w-10 h-10 text-orange-500" />
+            <Users className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500 flex-shrink-0" />
           </div>
         </div>
 
         <div className="card bg-pink-50 border-l-4 border-pink-500">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-pink-700 text-sm font-medium mb-1">🛍️ Customers</p>
-              <p className="text-3xl font-bold text-pink-900">{stats.totalCustomers}</p>
-              <p className="text-xs text-pink-600 mt-2">People who buy</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-pink-700 text-xs sm:text-sm font-medium mb-1">🛍️ Customers</p>
+              <p className="text-2xl sm:text-3xl font-bold text-pink-900">{stats.totalCustomers}</p>
+              <p className="text-xs text-pink-600 mt-2 truncate">People who buy</p>
             </div>
-            <Users className="w-10 h-10 text-pink-500" />
+            <Users className="w-8 h-8 sm:w-10 sm:h-10 text-pink-500 flex-shrink-0" />
           </div>
         </div>
       </div>
 
+      {/* Inventory Status - More Compact */}
       <div className="card">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          <Box className="w-6 h-6 text-primary-600" />
-          📦 Inventory Status (Stock Levels)
+        <h2 className="text-lg sm:text-xl font-bold mb-3 flex items-center gap-2">
+          <Box className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
+          📦 Inventory Status
         </h2>
-        <p className="text-sm text-gray-600 mb-4">See how much stock you have</p>
+        <p className="text-xs sm:text-sm text-gray-600 mb-4">Stock levels overview</p>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle className="w-8 h-8 text-green-600" />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 sm:p-5 text-center">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <CheckCircle className="w-6 h-6 sm:w-7 sm:h-7 text-green-600" />
             </div>
-            <p className="text-4xl font-bold text-green-600">{stats.inStockProducts}</p>
-            <p className="text-green-700 font-medium mt-2">✅ Good Stock</p>
+            <p className="text-3xl sm:text-4xl font-bold text-green-600">{stats.inStockProducts}</p>
+            <p className="text-green-700 font-medium mt-2 text-sm">✅ Good Stock</p>
             <p className="text-xs text-green-600 mt-1">More than 10 items</p>
           </div>
 
-          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <AlertTriangle className="w-8 h-8 text-yellow-600" />
+          <div className="bg-yellow-50 border-2 border-yellow-200 rounded-lg p-4 sm:p-5 text-center">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <AlertTriangle className="w-6 h-6 sm:w-7 sm:h-7 text-yellow-600" />
             </div>
-            <p className="text-4xl font-bold text-yellow-600">{stats.lowStockProducts}</p>
-            <p className="text-yellow-700 font-medium mt-2">⚠️ Running Low</p>
+            <p className="text-3xl sm:text-4xl font-bold text-yellow-600">{stats.lowStockProducts}</p>
+            <p className="text-yellow-700 font-medium mt-2 text-sm">⚠️ Running Low</p>
             <p className="text-xs text-yellow-600 mt-1">1-10 items left</p>
           </div>
 
-          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
-              <TrendingDown className="w-8 h-8 text-red-600" />
+          <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 sm:p-5 text-center">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-2">
+              <TrendingDown className="w-6 h-6 sm:w-7 sm:h-7 text-red-600" />
             </div>
-            <p className="text-4xl font-bold text-red-600">{stats.outOfStockProducts}</p>
-            <p className="text-red-700 font-medium mt-2">❌ Out of Stock</p>
+            <p className="text-3xl sm:text-4xl font-bold text-red-600">{stats.outOfStockProducts}</p>
+            <p className="text-red-700 font-medium mt-2 text-sm">❌ Out of Stock</p>
             <p className="text-xs text-red-600 mt-1">Need to restock!</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Latest Orders and Quick Actions - Better Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
         <div className="card">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <ShoppingCart className="w-6 h-6 text-primary-600" />
+            <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
               Latest Orders
             </h2>
-            <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-sm font-medium">
+            <Link to="/admin/orders" className="text-primary-600 hover:text-primary-700 text-xs sm:text-sm font-medium">
               See All →
             </Link>
           </div>
           {recentOrders.length > 0 ? (
-            <div className="space-y-3">
+            <div className="space-y-2 sm:space-y-3">
               {recentOrders.map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-900">#{order.id.substring(0, 8)}</p>
-                    <p className="text-sm text-gray-600">{order.customerName || 'Customer'}</p>
+                <div key={order.id} className="flex items-center justify-between p-2 sm:p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition">
+                  <div className="flex-1 min-w-0 mr-3">
+                    <p className="font-medium text-gray-900 text-sm truncate">#{order.id.substring(0, 8)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">{order.customerName || 'Customer'}</p>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-green-600">GH₵ {order.total.toFixed(2)}</p>
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-green-600 text-sm sm:text-base">GH₵ {order.total.toFixed(2)}</p>
                     <span className={`text-xs px-2 py-1 rounded-full inline-block mt-1 ${
                       order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                       order.status === 'delivered' || order.status === 'picked-up' ? 'bg-green-100 text-green-800' :
@@ -565,51 +570,51 @@ const AdminDashboard = () => {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8 text-gray-500">
-              <ShoppingCart className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-              <p>No orders yet</p>
+            <div className="text-center py-6 sm:py-8 text-gray-500">
+              <ShoppingCart className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 text-gray-300" />
+              <p className="text-sm">No orders yet</p>
             </div>
           )}
         </div>
 
         <div className="card">
-          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-            <TrendingUp className="w-6 h-6 text-primary-600" />
+          <h2 className="text-lg sm:text-xl font-bold mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
             Quick Actions
           </h2>
-          <div className="space-y-3">
-            <Link to="/admin/products" className="block p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-lg transition border border-blue-200">
+          <div className="space-y-2 sm:space-y-3">
+            <Link to="/admin/products" className="block p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-lg transition border border-blue-200">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-                  <Package className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Package className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <div>
-                  <p className="font-bold text-blue-900">View Products</p>
-                  <p className="text-sm text-blue-700">{stats.totalProducts} total products</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-blue-900 text-sm sm:text-base">View Products</p>
+                  <p className="text-xs sm:text-sm text-blue-700 truncate">{stats.totalProducts} total products</p>
                 </div>
               </div>
             </Link>
 
-            <Link to="/admin/orders" className="block p-4 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-lg transition border border-green-200">
+            <Link to="/admin/orders" className="block p-3 sm:p-4 bg-gradient-to-r from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-lg transition border border-green-200">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-                  <ShoppingCart className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <div>
-                  <p className="font-bold text-green-900">View Orders</p>
-                  <p className="text-sm text-green-700">{stats.pendingOrders} need attention</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-green-900 text-sm sm:text-base">View Orders</p>
+                  <p className="text-xs sm:text-sm text-green-700 truncate">{stats.pendingOrders} need attention</p>
                 </div>
               </div>
             </Link>
 
-            <Link to="/admin/agents" className="block p-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-lg transition border border-orange-200">
+            <Link to="/admin/agents" className="block p-3 sm:p-4 bg-gradient-to-r from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 rounded-lg transition border border-orange-200">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center">
-                  <Users className="w-6 h-6 text-white" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-orange-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <div>
-                  <p className="font-bold text-orange-900">Manage Agents</p>
-                  <p className="text-sm text-orange-700">{stats.totalAgents} agents</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-orange-900 text-sm sm:text-base">Manage Agents</p>
+                  <p className="text-xs sm:text-sm text-orange-700 truncate">{stats.totalAgents} agents</p>
                 </div>
               </div>
             </Link>
@@ -617,29 +622,29 @@ const AdminDashboard = () => {
         </div>
       </div>
 
-      {/* Sold Products Section */}
+      {/* Sold Products Section - More Compact */}
       {soldProducts.length > 0 && (
         <div className="card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Package className="w-6 h-6 text-primary-600" />
+              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-2">
+                <Package className="w-5 h-5 sm:w-6 sm:h-6 text-primary-600" />
                 Products Sold & Paid
               </h2>
-              <p className="text-sm text-gray-600 mt-1">Top selling products with verified payments</p>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">Top selling products with verified payments</p>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-600">Total Items Sold</p>
-              <p className="text-2xl font-bold text-green-600">
+            <div className="text-left sm:text-right">
+              <p className="text-xs sm:text-sm text-gray-600">Total Items Sold</p>
+              <p className="text-xl sm:text-2xl font-bold text-green-600">
                 {soldProducts.reduce((sum, p) => sum + p.totalQuantity, 0)}
               </p>
             </div>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {soldProducts.map((product, index) => (
-              <div key={product.name} className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-md transition">
-                <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden border-2 border-primary-200">
+              <div key={product.name} className="flex items-center gap-2 sm:gap-4 p-2 sm:p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 bg-gray-100 rounded-lg overflow-hidden border-2 border-primary-200">
                   {product.image ? (
                     <img 
                       src={product.image} 
@@ -648,46 +653,46 @@ const AdminDashboard = () => {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                      <Package className="w-8 h-8 text-gray-400" />
+                      <Package className="w-6 h-6 sm:w-8 sm:h-8 text-gray-400" />
                     </div>
                   )}
                 </div>
                 
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-bold text-gray-900">{product.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">
-                        Quantity Sold: <span className="font-semibold text-primary-600">{product.totalQuantity} units</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-gray-900 text-sm sm:text-base truncate">{product.name}</h3>
+                      <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                        Sold: <span className="font-semibold text-primary-600">{product.totalQuantity} units</span>
                       </p>
                       <p className="text-xs text-gray-500 mt-1">
-                        Number of Sales: {product.sales}
+                        {product.sales} sales
                       </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-600">Revenue</p>
-                      <p className="text-2xl font-bold text-green-600">
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-xs text-gray-600">Revenue</p>
+                      <p className="text-lg sm:text-xl font-bold text-green-600">
                         GH₵ {product.totalRevenue.toFixed(2)}
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <span className="text-primary-600 font-bold text-sm">#{index + 1}</span>
+                <div className="flex-shrink-0 w-6 h-6 sm:w-8 sm:h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                  <span className="text-primary-600 font-bold text-xs sm:text-sm">#{index + 1}</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
+          <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-green-700 font-medium">Total Sales Revenue (Paid Orders Only)</p>
+              <div className="flex-1 min-w-0 mr-3">
+                <p className="text-xs sm:text-sm text-green-700 font-medium">Total Sales Revenue (Paid Orders Only)</p>
                 <p className="text-xs text-green-600 mt-1">Sum of all products sold and paid for</p>
               </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-green-700">
+              <div className="text-right flex-shrink-0">
+                <p className="text-2xl sm:text-3xl font-bold text-green-700">
                   GH₵ {soldProducts.reduce((sum, p) => sum + p.totalRevenue, 0).toFixed(2)}
                 </p>
                 <p className="text-xs text-green-600 mt-1">
@@ -699,26 +704,26 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Admin Controls Section */}
+      {/* Admin Controls Section - More Compact */}
       <div className="card bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200">
-        <h2 className="text-xl font-bold mb-4 text-red-900 flex items-center gap-2">
-          <AlertTriangle className="w-6 h-6" />
+        <h2 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-red-900 flex items-center gap-2">
+          <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6" />
           Admin Controls (Danger Zone)
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition shadow-md"
+            className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition shadow-md text-sm sm:text-base"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
             Delete All Orders
           </button>
           
           <button
             onClick={() => setShowLogsModal(true)}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition shadow-md"
+            className="flex items-center justify-center gap-2 px-4 sm:px-6 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition shadow-md text-sm sm:text-base"
           >
-            <History className="w-5 h-5" />
+            <History className="w-4 h-4 sm:w-5 sm:h-5" />
             View Activity Logs ({agentLogs.length})
           </button>
         </div>

@@ -138,15 +138,23 @@ const HomePage = () => {
                     <p className="text-xl md:text-2xl mb-8 animate-fade-in">
                       {banner.subtitle}
                     </p>
-                    <div className="animate-fade-in">
-                      <Link
-                        to={banner.link || '/products'}
-                        className="inline-flex items-center space-x-2 bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
-                      >
-                        <span>Shop Now</span>
-                        <ArrowRight className="w-5 h-5" />
-                      </Link>
-                    </div>
+                    {banner.buttonText && (
+                      <div className="animate-fade-in">
+                        <Link
+                          to={
+                            banner.buttonLink 
+                              ? banner.buttonLink 
+                              : banner.categoryId 
+                                ? `/products?category=${banner.categoryId}` 
+                                : '/products'
+                          }
+                          className="inline-flex items-center space-x-2 bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
+                        >
+                          <span>{banner.buttonText}</span>
+                          <ArrowRight className="w-5 h-5" />
+                        </Link>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
