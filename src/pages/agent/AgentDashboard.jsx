@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
+import notificationSound from '../../utils/notificationSound';
 import { 
   Package, 
   ShoppingBag, 
@@ -14,7 +15,9 @@ import {
   AlertTriangle,
   Box,
   ShoppingCart,
-  Users
+  Users,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 const AgentDashboard = () => {
@@ -22,6 +25,8 @@ const AgentDashboard = () => {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(notificationSound.getEnabled());
+  const previousOrderCountRef = useRef(0);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -63,6 +68,13 @@ const AgentDashboard = () => {
             return product && (product.agentId === user.uid || product.createdBy === user.uid);
           })
         );
+
+        // Check for new orders and play sound
+        if (previousOrderCountRef.current > 0 && agentOrders.length > previousOrderCountRef.current) {
+          // New order detected for agent!
+          notificationSound.playOrderNotification();
+        }
+        previousOrderCountRef.current = agentOrders.length;
 
         setOrders(agentOrders);
       } else {
@@ -149,6 +161,13 @@ const AgentDashboard = () => {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 5);
 
+  // Toggle notification sound
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    notificationSound.setEnabled(newState);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -159,9 +178,32 @@ const AgentDashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">📊 My Business Dashboard</h1>
-        <p className="text-gray-600 mt-1">Complete overview of your sales performance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">📊 My Business Dashboard</h1>
+          <p className="text-gray-600 mt-1">Complete overview of your sales performance</p>
+        </div>
+        <button
+          onClick={toggleSound}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            soundEnabled
+              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+          title={soundEnabled ? 'Click to turn off notification sounds' : 'Click to turn on notification sounds'}
+        >
+          {soundEnabled ? (
+            <>
+              <Volume2 size={20} />
+              <span className="font-medium">Sound On</span>
+            </>
+          ) : (
+            <>
+              <VolumeX size={20} />
+              <span className="font-medium">Sound Off</span>
+            </>
+          )}
+        </button>
       </div>
 
       <div className="card bg-gradient-to-r from-green-500 to-emerald-600 text-white">

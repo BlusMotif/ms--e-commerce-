@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ref, onValue, remove, set } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
 import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { Link } from 'react-router-dom';
+import notificationSound from '../../utils/notificationSound';
 import { 
   ShoppingCart, 
   Package, 
@@ -17,7 +18,9 @@ import {
   ShoppingBag,
   Trash2,
   History,
-  RotateCcw
+  RotateCcw,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -30,6 +33,8 @@ const AdminDashboard = () => {
   const [deleteError, setDeleteError] = useState('');
   const [agentLogs, setAgentLogs] = useState([]);
   const [showLogsModal, setShowLogsModal] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(notificationSound.getEnabled());
+  const previousOrderCountRef = useRef(0);
 
   useEffect(() => {
     const ordersRef = ref(database, 'orders');
@@ -40,6 +45,14 @@ const AdminDashboard = () => {
           id: key,
           ...data[key],
         }));
+        
+        // Check for new orders and play sound
+        if (previousOrderCountRef.current > 0 && ordersArray.length > previousOrderCountRef.current) {
+          // New order detected!
+          notificationSound.playOrderNotification();
+        }
+        previousOrderCountRef.current = ordersArray.length;
+        
         setOrders(ordersArray);
       }
     });
@@ -254,11 +267,31 @@ const AdminDashboard = () => {
     );
   }
 
+  const toggleSound = () => {
+    const newState = !soundEnabled;
+    setSoundEnabled(newState);
+    notificationSound.setEnabled(newState);
+  };
+
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">📊 Business Dashboard</h1>
-        <p className="text-gray-600 mt-1">Complete overview of your store performance</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">📊 Business Dashboard</h1>
+          <p className="text-gray-600 mt-1">Complete overview of your store performance</p>
+        </div>
+        <button
+          onClick={toggleSound}
+          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition ${
+            soundEnabled 
+              ? 'bg-green-100 text-green-700 hover:bg-green-200' 
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+          title={soundEnabled ? 'Notifications sounds enabled' : 'Notification sounds disabled'}
+        >
+          {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          <span className="text-sm font-medium">{soundEnabled ? 'Sound On' : 'Sound Off'}</span>
+        </button>
       </div>
 
       <div className="card bg-gradient-to-r from-green-500 to-emerald-600 text-white">
