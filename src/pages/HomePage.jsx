@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
+import { useAuthStore } from '../store/authStore';
 import { ChevronLeft, ChevronRight, ArrowRight, ShoppingBag, Package } from 'lucide-react';
 
 const HomePage = () => {
+  const { user } = useAuthStore();
   const [banners, setBanners] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -286,18 +288,20 @@ const HomePage = () => {
         </section>
       )}
 
-      {/* Call to Action */}
-      <section className="bg-primary-600 text-white py-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Ready to Shop?</h2>
-          <p className="text-xl mb-8">
-            Create an account today and enjoy fast delivery or convenient pickup options!
-          </p>
-          <Link to="/signup" className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-block">
-            Get Started
-          </Link>
-        </div>
-      </section>
+      {/* Call to Action - Only show when user is not logged in */}
+      {!user && (
+        <section className="bg-primary-600 text-white py-16">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 className="text-3xl font-bold mb-4">Ready to Shop?</h2>
+            <p className="text-xl mb-8">
+              Create an account today and enjoy fast delivery or convenient pickup options!
+            </p>
+            <Link to="/signup" className="bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-block">
+              Get Started
+            </Link>
+          </div>
+        </section>
+      )}
     </div>
   );
 };
