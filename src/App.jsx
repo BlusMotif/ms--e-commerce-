@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { useAuthStore } from './store/authStore';
+import ScrollToTop from './components/ScrollToTop';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -66,6 +67,7 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ScrollToTop />
         <Toaster position="top-right" />
         <Routes>
           {/* Public Routes */}

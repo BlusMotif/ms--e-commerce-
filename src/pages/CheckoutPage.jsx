@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ref, push, set } from 'firebase/database';
 import { database } from '../config/firebase';
@@ -20,6 +20,20 @@ const CheckoutPage = () => {
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Check if Paystack is loaded
+  useEffect(() => {
+    console.log('Checkout page loaded. Checking Paystack availability...');
+    console.log('PaystackPop available:', typeof window.PaystackPop !== 'undefined');
+    console.log('Paystack key configured:', !!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY);
+    
+    if (typeof window.PaystackPop === 'undefined') {
+      console.warn('PaystackPop not loaded. Retrying in 2 seconds...');
+      setTimeout(() => {
+        console.log('Retry check - PaystackPop available:', typeof window.PaystackPop !== 'undefined');
+      }, 2000);
+    }
+  }, []);
+
   const deliveryFee = deliveryMethod === 'delivery' ? 10 : 0;
   const total = getTotal() + deliveryFee;
 
@@ -28,6 +42,27 @@ const CheckoutPage = () => {
     setLoading(true);
 
     try {
+      // Validate Paystack is loaded
+      if (paymentMethod === 'paystack') {
+        if (typeof window.PaystackPop === 'undefined') {
+          console.error('PaystackPop is not defined. Script may not be loaded.');
+          toast.error('Payment system is still loading. Please wait a moment and try again.');
+          setLoading(false);
+          return;
+        }
+
+        // Validate environment variable
+        const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+        if (!paystackKey) {
+          console.error('VITE_PAYSTACK_PUBLIC_KEY is not set');
+          toast.error('Payment configuration error. Please contact support.');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Paystack Key (first 10 chars):', paystackKey.substring(0, 10));
+      }
+
       // Create order
       const ordersRef = ref(database, 'orders');
       const newOrderRef = push(ordersRef);
@@ -65,32 +100,63 @@ const CheckoutPage = () => {
 
       if (paymentMethod === 'paystack') {
         // Initialize Paystack payment
-        const handler = window.PaystackPop.setup({
-          key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
-          email: user.email,
-          amount: total * 100, // Paystack expects amount in pesewas
-          currency: 'GHS',
-          ref: newOrderRef.key,
-          metadata: {
-            orderId: newOrderRef.key,
-            customerId: user.uid,
-            customerName: user.displayName || user.email,
-          },
-          callback: async function (response) {
-            // Payment successful
-            await set(ref(database, `orders/${newOrderRef.key}/paymentStatus`), 'paid');
-            await set(ref(database, `orders/${newOrderRef.key}/paymentReference`), response.reference);
-            
-            clearCart();
-            toast.success('Order placed successfully!');
-            navigate(`/customer/orders`);
-          },
-          onClose: function () {
-            toast.error('Payment cancelled');
-          },
-        });
+        try {
+          console.log('Initializing Paystack with:', {
+            key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY?.substring(0, 10) + '...',
+            email: user.email,
+            amount: total * 100,
+            currency: 'GHS',
+            ref: newOrderRef.key
+          });
 
-        handler.openIframe();
+          const handler = window.PaystackPop.setup({
+            key: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+            email: user.email,
+            amount: total * 100, // Paystack expects amount in pesewas
+            currency: 'GHS',
+            ref: newOrderRef.key,
+            metadata: {
+              orderId: newOrderRef.key,
+              customerId: user.uid,
+              customerName: user.displayName || user.email,
+            },
+            callback: function (response) {
+              // Payment successful - handle async operations
+              console.log('Payment successful:', response);
+              
+              // Update payment status
+              set(ref(database, `orders/${newOrderRef.key}/paymentStatus`), 'paid')
+                .then(() => set(ref(database, `orders/${newOrderRef.key}/paymentReference`), response.reference))
+                .then(() => {
+                  clearCart();
+                  toast.success('Order placed and payment successful!');
+                  navigate(`/customer/orders`);
+                })
+                .catch((error) => {
+                  console.error('Error updating payment status:', error);
+                  toast.error('Payment successful but order update failed. Contact support with reference: ' + response.reference);
+                });
+            },
+            onClose: function () {
+              console.log('Payment window closed by user');
+              toast.error('Payment window closed. Your order was saved but not paid.');
+              setLoading(false);
+            },
+          });
+
+          console.log('Paystack handler created, opening iframe...');
+          handler.openIframe();
+        } catch (error) {
+          console.error('Paystack initialization error:', error);
+          console.error('Error details:', {
+            message: error.message,
+            stack: error.stack,
+            paystackPopExists: typeof window.PaystackPop !== 'undefined',
+            keyExists: !!import.meta.env.VITE_PAYSTACK_PUBLIC_KEY
+          });
+          toast.error('Failed to initialize payment: ' + (error.message || 'Unknown error') + '. Please try cash on delivery.');
+          setLoading(false);
+        }
       } else {
         // Cash on delivery
         clearCart();
@@ -99,9 +165,12 @@ const CheckoutPage = () => {
       }
     } catch (error) {
       console.error('Error placing order:', error);
-      toast.error('Failed to place order');
+      toast.error(error.message || 'Failed to place order. Please try again.');
     } finally {
-      setLoading(false);
+      // Only set loading to false if not using Paystack (Paystack handles its own loading state)
+      if (paymentMethod !== 'paystack') {
+        setLoading(false);
+      }
     }
   };
 
