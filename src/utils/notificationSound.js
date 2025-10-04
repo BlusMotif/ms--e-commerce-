@@ -39,9 +39,9 @@ class NotificationSound {
     oscillator1.frequency.setValueAtTime(1318.51, now);
     oscillator1.type = 'sine';
     
-    // Envelope for first tone
+    // Envelope for first tone (VERY HIGH VOLUME)
     gainNode1.gain.setValueAtTime(0, now);
-    gainNode1.gain.linearRampToValueAtTime(0.3, now + 0.01);
+    gainNode1.gain.linearRampToValueAtTime(0.8, now + 0.01);
     gainNode1.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
     
     oscillator1.start(now);
@@ -58,9 +58,9 @@ class NotificationSound {
     oscillator2.frequency.setValueAtTime(1046.50, now + 0.15);
     oscillator2.type = 'sine';
     
-    // Envelope for second tone
+    // Envelope for second tone (VERY HIGH VOLUME)
     gainNode2.gain.setValueAtTime(0, now + 0.15);
-    gainNode2.gain.linearRampToValueAtTime(0.3, now + 0.16);
+    gainNode2.gain.linearRampToValueAtTime(0.8, now + 0.16);
     gainNode2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
     
     oscillator2.start(now + 0.15);
@@ -89,8 +89,9 @@ class NotificationSound {
       oscillator.frequency.setValueAtTime(beepFrequency, startTime);
       oscillator.type = 'square';
       
+      // VERY HIGH VOLUME for alert beeps
       gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.2, startTime + 0.01);
+      gainNode.gain.linearRampToValueAtTime(0.7, startTime + 0.01);
       gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.15);
       
       oscillator.start(startTime);
@@ -120,8 +121,9 @@ class NotificationSound {
       oscillator.frequency.setValueAtTime(freq, startTime);
       oscillator.type = 'sine';
       
+      // VERY HIGH VOLUME for order notifications
       gainNode.gain.setValueAtTime(0, startTime);
-      gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.02);
+      gainNode.gain.linearRampToValueAtTime(0.8, startTime + 0.02);
       gainNode.gain.exponentialRampToValueAtTime(0.01, startTime + 0.4);
       
       oscillator.start(startTime);

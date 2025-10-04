@@ -17,7 +17,9 @@ import {
   ShoppingCart,
   Users,
   Volume2,
-  VolumeX
+  VolumeX,
+  Bell,
+  X
 } from 'lucide-react';
 
 const AgentDashboard = () => {
@@ -27,6 +29,8 @@ const AgentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(notificationSound.getEnabled());
   const previousOrderCountRef = useRef(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -86,6 +90,41 @@ const AgentDashboard = () => {
       unsubscribeOrders();
     };
   }, [user, products]);
+
+  // Fetch notifications and announcements
+  useEffect(() => {
+    const announcementsRef = ref(database, 'announcements');
+    const unsubscribeAnnouncements = onValue(announcementsRef, (snapshot) => {
+      const allNotifs = [];
+      
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        Object.keys(data).forEach((key) => {
+          const announcement = data[key];
+          
+          // Show announcements for agents or all
+          if (
+            announcement.active &&
+            (announcement.targetAudience === 'all' ||
+              announcement.targetAudience === 'agents' ||
+              announcement.targetAudience === 'agent')
+          ) {
+            allNotifs.push({
+              id: key,
+              ...announcement,
+              source: 'announcement',
+            });
+          }
+        });
+      }
+      
+      // Sort by createdAt descending, show only latest 5
+      allNotifs.sort((a, b) => b.createdAt - a.createdAt);
+      setNotifications(allNotifs.slice(0, 5));
+    });
+
+    return () => unsubscribeAnnouncements();
+  }, []);
 
   // Calculate stats - only count paid orders for revenue
   // Check multiple payment field possibilities for compatibility
@@ -183,27 +222,100 @@ const AgentDashboard = () => {
           <h1 className="text-3xl font-bold text-gray-900">📊 My Business Dashboard</h1>
           <p className="text-gray-600 mt-1">Complete overview of your sales performance</p>
         </div>
-        <button
-          onClick={toggleSound}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-            soundEnabled
-              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-          title={soundEnabled ? 'Click to turn off notification sounds' : 'Click to turn on notification sounds'}
-        >
-          {soundEnabled ? (
-            <>
-              <Volume2 size={20} />
-              <span className="font-medium">Sound On</span>
-            </>
-          ) : (
-            <>
-              <VolumeX size={20} />
-              <span className="font-medium">Sound Off</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-3">
+          {/* Notifications Bell */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+              title="View notifications"
+            >
+              <Bell className="w-5 h-5" />
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                  {notifications.length}
+                </span>
+              )}
+            </button>
+            
+            {/* Notifications Dropdown */}
+            {showNotifications && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+                  <h3 className="font-semibold text-gray-900">Notifications</h3>
+                  <button 
+                    onClick={() => setShowNotifications(false)}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {notifications.length === 0 ? (
+                  <div className="p-6 text-center text-gray-500">
+                    <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                    <p>No notifications</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-100">
+                    {notifications.map((notif) => (
+                      <div key={notif.id} className="p-3 hover:bg-gray-50 transition">
+                        <div className="flex items-start gap-2">
+                          <div className="flex-shrink-0 mt-1">
+                            {notif.type === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                            {notif.type === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                            {notif.type === 'info' && <Bell className="w-4 h-4 text-blue-500" />}
+                            {!notif.type && <Bell className="w-4 h-4 text-gray-400" />}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+                            <p className="text-xs text-gray-600 mt-1">{notif.message}</p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {new Date(notif.createdAt).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="p-3 border-t border-gray-200">
+                  <Link 
+                    to="/notifications" 
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium block text-center"
+                    onClick={() => setShowNotifications(false)}
+                  >
+                    View All Notifications
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          {/* Sound Toggle */}
+          <button
+            onClick={toggleSound}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+              soundEnabled
+                ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+            title={soundEnabled ? 'Click to turn off notification sounds' : 'Click to turn on notification sounds'}
+          >
+            {soundEnabled ? (
+              <>
+                <Volume2 size={20} />
+                <span className="font-medium">Sound On</span>
+              </>
+            ) : (
+              <>
+                <VolumeX size={20} />
+                <span className="font-medium">Sound Off</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       <div className="card bg-gradient-to-r from-green-500 to-emerald-600 text-white">
