@@ -67,9 +67,20 @@ const AdminDashboard = () => {
     };
   }, []);
 
+  // Calculate stats - only count paid orders for revenue
+  // Check multiple payment field possibilities for compatibility
+  const paidOrders = orders.filter(o => 
+    o.isPaid === true || 
+    o.isPaid === 'true' || 
+    o.paymentStatus === 'paid' || 
+    o.paymentStatus === 'completed' ||
+    (o.status === 'delivered' || o.status === 'picked-up') // Delivered/picked-up orders are assumed paid
+  );
+  
   const stats = {
-    totalRevenue: orders.reduce((sum, o) => sum + o.total, 0),
+    totalRevenue: paidOrders.reduce((sum, o) => sum + (o.total || 0), 0),
     totalOrders: orders.length,
+    paidOrders: paidOrders.length,
     pendingOrders: orders.filter(o => o.status === 'pending').length,
     completedOrders: orders.filter(o => o.status === 'delivered' || o.status === 'picked-up').length,
     totalProducts: products.length,
@@ -79,6 +90,36 @@ const AdminDashboard = () => {
     totalCustomers: users.filter(u => u.role === 'customer').length,
     totalAgents: users.filter(u => u.role === 'agent').length,
   };
+
+  // Get sold items from paid orders with product details
+  const soldItems = paidOrders.flatMap(order => 
+    order.items.map(item => ({
+      ...item,
+      orderId: order.id,
+      orderDate: order.createdAt
+    }))
+  );
+
+  // Group sold items by product name and calculate totals
+  const soldProductsMap = soldItems.reduce((acc, item) => {
+    if (!acc[item.name]) {
+      acc[item.name] = {
+        name: item.name,
+        image: item.image,
+        totalQuantity: 0,
+        totalRevenue: 0,
+        sales: 0
+      };
+    }
+    acc[item.name].totalQuantity += item.quantity;
+    acc[item.name].totalRevenue += item.price * item.quantity;
+    acc[item.name].sales += 1;
+    return acc;
+  }, {});
+
+  const soldProducts = Object.values(soldProductsMap)
+    .sort((a, b) => b.totalRevenue - a.totalRevenue)
+    .slice(0, 10);
 
   const recentOrders = orders
     .sort((a, b) => b.createdAt - a.createdAt)
@@ -95,18 +136,18 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">📊 Simple Dashboard</h1>
-        <p className="text-gray-600 mt-1">Easy-to-understand overview of your store</p>
+        <h1 className="text-3xl font-bold text-gray-900">📊 Business Dashboard</h1>
+        <p className="text-gray-600 mt-1">Complete overview of your store performance</p>
       </div>
 
       <div className="card bg-gradient-to-r from-green-500 to-emerald-600 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-green-100 text-sm mb-2">💰 Total Money Earned</p>
+            <p className="text-green-100 text-sm mb-2">💰 Total Revenue (Paid Orders)</p>
             <p className="text-5xl font-bold">GH₵ {stats.totalRevenue.toFixed(2)}</p>
             <p className="text-green-100 mt-3 flex items-center gap-2">
               <ShoppingBag className="w-4 h-4" />
-              From {stats.totalOrders} orders
+              From {stats.paidOrders} paid orders out of {stats.totalOrders} total
             </p>
           </div>
           <DollarSign className="w-24 h-24 text-green-200 opacity-50" />
@@ -298,6 +339,88 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Sold Products Section */}
+      {soldProducts.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Package className="w-6 h-6 text-primary-600" />
+                Products Sold & Paid
+              </h2>
+              <p className="text-sm text-gray-600 mt-1">Top selling products with verified payments</p>
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Total Items Sold</p>
+              <p className="text-2xl font-bold text-green-600">
+                {soldProducts.reduce((sum, p) => sum + p.totalQuantity, 0)}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {soldProducts.map((product, index) => (
+              <div key={product.name} className="flex items-center gap-4 p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                <div className="flex-shrink-0 w-16 h-16 bg-gray-100 rounded-lg overflow-hidden border-2 border-primary-200">
+                  {product.image ? (
+                    <img 
+                      src={product.image} 
+                      alt={product.name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <Package className="w-8 h-8 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex-1">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="font-bold text-gray-900">{product.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Quantity Sold: <span className="font-semibold text-primary-600">{product.totalQuantity} units</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Number of Sales: {product.sales}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-gray-600">Revenue</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        GH₵ {product.totalRevenue.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex-shrink-0 w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
+                  <span className="text-primary-600 font-bold text-sm">#{index + 1}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border-2 border-green-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-green-700 font-medium">Total Sales Revenue (Paid Orders Only)</p>
+                <p className="text-xs text-green-600 mt-1">Sum of all products sold and paid for</p>
+              </div>
+              <div className="text-right">
+                <p className="text-3xl font-bold text-green-700">
+                  GH₵ {soldProducts.reduce((sum, p) => sum + p.totalRevenue, 0).toFixed(2)}
+                </p>
+                <p className="text-xs text-green-600 mt-1">
+                  {soldProducts.reduce((sum, p) => sum + p.totalQuantity, 0)} items sold
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
