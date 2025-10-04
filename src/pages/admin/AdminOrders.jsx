@@ -1,9 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, update, remove } from 'firebase/database';
+import { ref, onValue, update, remove, get } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { Package, Clock, Truck, CheckCircle, XCircle, ChevronDown, ChevronUp, Search, Filter, DollarSign, Calendar } from 'lucide-react';
 import { sendOrderStatusNotification, sendPaymentConfirmationNotification } from '../../utils/notifications';
+
+// Order Item Component with Product Image
+const OrderItem = ({ item }) => {
+  const [product, setProduct] = useState(null);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const productRef = ref(database, `products/${item.productId}`);
+        const snapshot = await get(productRef);
+        if (snapshot.exists()) {
+          setProduct(snapshot.val());
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+      }
+    };
+    if (item.productId) {
+      fetchProduct();
+    }
+  }, [item.productId]);
+
+  return (
+    <div className="flex gap-3 py-2 border-b hover:bg-gray-50 transition">
+      {/* Product Image */}
+      <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded border border-gray-200 overflow-hidden">
+        {product?.images?.[0] ? (
+          <img
+            src={product.images[0]}
+            alt={item.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <Package className="w-8 h-8" />
+          </div>
+        )}
+      </div>
+      
+      {/* Product Details */}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-gray-900">{item.name}</p>
+        {item.selectedSize && (
+          <p className="text-sm text-gray-500">Size: {item.selectedSize}</p>
+        )}
+        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+      </div>
+      
+      {/* Price */}
+      <div className="text-right flex-shrink-0">
+        <p className="font-bold text-orange-600">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
+        <p className="text-xs text-gray-500">GH₵ {item.price.toFixed(2)} each</p>
+      </div>
+    </div>
+  );
+};
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -366,21 +422,12 @@ const AdminOrders = () => {
               {/* Expanded Order Details */}
               {expandedOrder === order.id && (
                 <div className="border-t pt-4 space-y-4">
-                  {/* Order Items */}
+                  {/* Order Items - Jumia Style */}
                   <div>
                     <h4 className="font-semibold mb-2">Order Items</h4>
                     <div className="space-y-2">
                       {order.items.map((item, index) => (
-                        <div key={index} className="flex items-center justify-between py-2 border-b">
-                          <div className="flex-1">
-                            <p className="font-medium">{item.name}</p>
-                            {item.selectedSize && (
-                              <p className="text-sm text-gray-600">Size: {item.selectedSize}</p>
-                            )}
-                          </div>
-                          <p className="text-sm text-gray-600 mx-4">x{item.quantity}</p>
-                          <p className="font-semibold">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
-                        </div>
+                        <OrderItem key={index} item={item} />
                       ))}
                     </div>
                   </div>

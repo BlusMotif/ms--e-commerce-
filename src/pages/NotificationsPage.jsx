@@ -114,21 +114,6 @@ const NotificationsPage = () => {
     }
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case 'success':
-        return 'bg-green-50 border-green-200';
-      case 'warning':
-        return 'bg-yellow-50 border-yellow-200';
-      case 'error':
-        return 'bg-red-50 border-red-200';
-      case 'announcement':
-        return 'bg-blue-50 border-blue-200';
-      default:
-        return 'bg-gray-50 border-gray-200';
-    }
-  };
-
   const filteredNotifications = notifications.filter((notif) => {
     if (filter === 'all') return true;
     if (filter === 'unread') return !notif.read;
@@ -211,37 +196,62 @@ const NotificationsPage = () => {
 
       {/* Notifications List */}
       {filteredNotifications.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           {filteredNotifications.map((notification) => (
             <div
               key={notification.id}
-              className={`card border-l-4 ${getTypeColor(notification.type)} ${
-                !notification.read && notification.source === 'user' ? 'bg-white' : 'bg-gray-50'
+              className={`card hover:shadow-md transition-shadow ${
+                !notification.read && notification.source === 'user' ? 'bg-white border-l-4 border-orange-500' : 'bg-gray-50'
               }`}
             >
-              <div className="flex items-start space-x-4">
-                {/* Icon */}
-                <div className="flex-shrink-0 mt-1">
-                  {getIcon(notification.type || 'info')}
-                </div>
+              {/* Jumia-style layout: image on left, content on right */}
+              <div className="flex gap-4">
+                {/* Product Images - Jumia style */}
+                {notification.metadata?.productImages && notification.metadata.productImages.length > 0 && (
+                  <div className="flex-shrink-0">
+                    <div className="flex gap-2">
+                      {notification.metadata.productImages.slice(0, 3).map((img, idx) => (
+                        <div key={idx} className="w-16 h-16 bg-gray-100 rounded border border-gray-200 overflow-hidden">
+                          <img
+                            src={img.url}
+                            alt={img.name}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    {notification.metadata.itemCount > 3 && (
+                      <p className="text-xs text-gray-500 mt-1 text-center">
+                        +{notification.metadata.itemCount - 3} more
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Icon for non-order notifications */}
+                {!notification.metadata?.productImages && (
+                  <div className="flex-shrink-0 mt-1">
+                    {getIcon(notification.type || 'info')}
+                  </div>
+                )}
 
                 {/* Content */}
-                <div className="flex-1">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1 flex items-center space-x-2">
-                        <span>{notification.title}</span>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-base">{notification.title}</h3>
                         {!notification.read && notification.source === 'user' && (
-                          <span className="inline-block w-2 h-2 bg-primary-600 rounded-full"></span>
+                          <span className="flex-shrink-0 w-2 h-2 bg-orange-500 rounded-full"></span>
                         )}
                         {notification.source === 'announcement' && (
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
+                          <span className="flex-shrink-0 text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full font-medium">
                             Announcement
                           </span>
                         )}
-                      </h3>
-                      <p className="text-gray-700 mb-2">{notification.message}</p>
-                      <p className="text-sm text-gray-500">
+                      </div>
+                      <p className="text-gray-700 text-sm mb-1">{notification.message}</p>
+                      <p className="text-xs text-gray-500">
                         {new Date(notification.createdAt).toLocaleString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -256,7 +266,7 @@ const NotificationsPage = () => {
                     {!notification.read && notification.source === 'user' && (
                       <button
                         onClick={() => handleMarkAsRead(notification.id, notification.source)}
-                        className="ml-4 p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                        className="flex-shrink-0 p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
                         title="Mark as read"
                       >
                         <Check className="w-5 h-5" />
@@ -264,13 +274,13 @@ const NotificationsPage = () => {
                     )}
                   </div>
 
-                  {/* Additional Info */}
-                  {notification.link && (
+                  {/* Link */}
+                  {notification.metadata?.orderLink && (
                     <a
-                      href={notification.link}
-                      className="inline-flex items-center text-primary-600 hover:text-primary-700 font-medium text-sm mt-2"
+                      href={notification.metadata.orderLink}
+                      className="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium text-sm mt-2"
                     >
-                      View Details →
+                      View Order →
                     </a>
                   )}
                 </div>

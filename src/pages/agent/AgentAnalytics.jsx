@@ -143,37 +143,40 @@ const AgentAnalytics = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Analytics & Reports</h1>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setTimeRange('week')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              timeRange === 'week'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Last 7 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('month')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              timeRange === 'month'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Last 30 Days
-          </button>
-          <button
-            onClick={() => setTimeRange('year')}
-            className={`px-4 py-2 rounded-lg font-medium transition ${
-              timeRange === 'year'
-                ? 'bg-primary-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-          >
-            Last Year
-          </button>
+        {/* Time Range Filters - Scrollable on Mobile */}
+        <div className="overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            <button
+              onClick={() => setTimeRange('week')}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                timeRange === 'week'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 7 Days
+            </button>
+            <button
+              onClick={() => setTimeRange('month')}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                timeRange === 'month'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last 30 Days
+            </button>
+            <button
+              onClick={() => setTimeRange('year')}
+              className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                timeRange === 'year'
+                  ? 'bg-primary-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              Last Year
+            </button>
+          </div>
         </div>
       </div>
 

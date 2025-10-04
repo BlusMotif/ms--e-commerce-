@@ -189,39 +189,41 @@ const HomePage = () => {
 
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <h2 className="text-2xl font-bold mb-6">Shop by Category</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
-          {categories.map((category) => (
-            <Link
-              key={category.id}
-              to={`/products?category=${category.slug}`}
-              className="group animate-fade-in"
-            >
-              <div className="bg-white rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-md transition-all duration-200 overflow-hidden">
-                {/* Image/Icon Section - Compact */}
-                <div className="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
-                  {category.image ? (
-                    <img
-                      src={category.image}
-                      alt={category.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
-                    />
-                  ) : (
-                    <div className="text-primary-500">
-                      <Package className="w-12 h-12" />
-                    </div>
-                  )}
+        <h2 className="text-2xl font-bold mb-6 text-center">Shop by Category</h2>
+        <div className="flex justify-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-w-fit">
+            {categories.map((category) => (
+              <Link
+                key={category.id}
+                to={`/products?category=${category.slug}`}
+                className="group animate-fade-in"
+              >
+                <div className="bg-white rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-md transition-all duration-200 overflow-hidden">
+                  {/* Image/Icon Section - Compact */}
+                  <div className="aspect-square bg-gray-50 flex items-center justify-center relative overflow-hidden">
+                    {category.image ? (
+                      <img
+                        src={category.image}
+                        alt={category.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                      />
+                    ) : (
+                      <div className="text-primary-500">
+                        <Package className="w-12 h-12" />
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Text Section - Minimal */}
+                  <div className="p-2 text-center">
+                    <h3 className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-600 transition-colors">
+                      {category.name}
+                    </h3>
+                  </div>
                 </div>
-                
-                {/* Text Section - Minimal */}
-                <div className="p-2 text-center">
-                  <h3 className="font-medium text-sm text-gray-900 truncate group-hover:text-primary-600 transition-colors">
-                    {category.name}
-                  </h3>
-                </div>
-              </div>
-            </Link>
-          ))}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {/* Empty State */}

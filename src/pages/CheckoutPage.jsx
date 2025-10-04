@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, get, update } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
@@ -36,6 +36,31 @@ const CheckoutPage = () => {
 
   const deliveryFee = deliveryMethod === 'delivery' ? 10 : 0;
   const total = getTotal() + deliveryFee;
+
+  // Function to deduct stock from products
+  const deductStock = async (orderItems) => {
+    try {
+      for (const item of orderItems) {
+        const productRef = ref(database, `products/${item.productId}`);
+        const productSnapshot = await get(productRef);
+        
+        if (productSnapshot.exists()) {
+          const product = productSnapshot.val();
+          const newStock = (product.stock || 0) - item.quantity;
+          
+          await update(productRef, {
+            stock: Math.max(0, newStock), // Ensure stock doesn't go below 0
+            updatedAt: Date.now()
+          });
+          
+          console.log(`Stock updated for ${item.name}: ${product.stock} -> ${newStock}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error deducting stock:', error);
+      // Don't throw error - we don't want to fail the order if stock update fails
+    }
+  };
 
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
@@ -95,8 +120,7 @@ const CheckoutPage = () => {
 
       await set(newOrderRef, orderData);
 
-      // Send order placed notification
-      await sendOrderPlacedNotification(user.uid, newOrderRef.key, total);
+      // DON'T send notification yet - wait until payment succeeds
 
       if (paymentMethod === 'paystack') {
         // Initialize Paystack payment
@@ -124,9 +148,11 @@ const CheckoutPage = () => {
               // Payment successful - handle async operations
               console.log('Payment successful:', response);
               
-              // Update payment status
+              // Update payment status, deduct stock, and send notification
               set(ref(database, `orders/${newOrderRef.key}/paymentStatus`), 'paid')
                 .then(() => set(ref(database, `orders/${newOrderRef.key}/paymentReference`), response.reference))
+                .then(() => deductStock(orderData.items))
+                .then(() => sendOrderPlacedNotification(user.uid, newOrderRef.key, total, orderData.items))
                 .then(() => {
                   clearCart();
                   toast.success('Order placed and payment successful!');
@@ -158,7 +184,9 @@ const CheckoutPage = () => {
           setLoading(false);
         }
       } else {
-        // Cash on delivery
+        // Cash on delivery - deduct stock and send notification immediately
+        await deductStock(orderData.items);
+        await sendOrderPlacedNotification(user.uid, newOrderRef.key, total, orderData.items);
         clearCart();
         toast.success('Order placed successfully! Pay on delivery.');
         navigate(`/customer/orders`);

@@ -1,9 +1,65 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ref, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, get } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { Package, Clock, Truck, CheckCircle, XCircle } from 'lucide-react';
+
+// Order Item Component with Product Image
+const OrderItem = ({ item }) => {
+  const [product, setProduct] = useState(null);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        const productRef = ref(database, `products/${item.productId}`);
+        const snapshot = await get(productRef);
+        if (snapshot.exists()) {
+          setProduct(snapshot.val());
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+      }
+    };
+    if (item.productId) {
+      fetchProduct();
+    }
+  }, [item.productId]);
+
+  return (
+    <div className="flex gap-3 py-2 border-b hover:bg-gray-50 transition">
+      {/* Product Image */}
+      <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded border border-gray-200 overflow-hidden">
+        {product?.images?.[0] ? (
+          <img
+            src={product.images[0]}
+            alt={item.name}
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <Package className="w-8 h-8" />
+          </div>
+        )}
+      </div>
+      
+      {/* Product Details */}
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-gray-900">{item.name}</p>
+        {item.selectedSize && (
+          <p className="text-sm text-gray-500">Size: {item.selectedSize}</p>
+        )}
+        <p className="text-sm text-gray-500">Qty: {item.quantity}</p>
+      </div>
+      
+      {/* Price */}
+      <div className="text-right flex-shrink-0">
+        <p className="font-bold text-orange-600">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
+        <p className="text-xs text-gray-500">GH₵ {item.price.toFixed(2)} each</p>
+      </div>
+    </div>
+  );
+};
 
 const CustomerOrders = () => {
   const { user } = useAuthStore();
@@ -101,48 +157,50 @@ const CustomerOrders = () => {
         <h1 className="text-3xl font-bold">My Orders</h1>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setFilter('all')}
-          className={`px-4 py-2 rounded-lg font-medium transition ${
-            filter === 'all'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          All Orders ({orders.length})
-        </button>
-        <button
-          onClick={() => setFilter('pending')}
-          className={`px-4 py-2 rounded-lg font-medium transition ${
-            filter === 'pending'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Pending ({orders.filter(o => o.status === 'pending').length})
-        </button>
-        <button
-          onClick={() => setFilter('confirmed')}
-          className={`px-4 py-2 rounded-lg font-medium transition ${
-            filter === 'confirmed'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Confirmed ({orders.filter(o => o.status === 'confirmed').length})
-        </button>
-        <button
-          onClick={() => setFilter('delivered')}
-          className={`px-4 py-2 rounded-lg font-medium transition ${
-            filter === 'delivered'
-              ? 'bg-primary-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-          }`}
-        >
-          Delivered ({orders.filter(o => o.status === 'delivered' || o.status === 'picked-up').length})
-        </button>
+      {/* Filter Tabs - Scrollable on Mobile */}
+      <div className="overflow-x-auto mb-6">
+        <div className="flex gap-2 min-w-max">
+          <button
+            onClick={() => setFilter('all')}
+            className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+              filter === 'all'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            All Orders ({orders.length})
+          </button>
+          <button
+            onClick={() => setFilter('pending')}
+            className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+              filter === 'pending'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Pending ({orders.filter(o => o.status === 'pending').length})
+          </button>
+          <button
+            onClick={() => setFilter('confirmed')}
+            className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+              filter === 'confirmed'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Confirmed ({orders.filter(o => o.status === 'confirmed').length})
+          </button>
+          <button
+            onClick={() => setFilter('delivered')}
+            className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+              filter === 'delivered'
+                ? 'bg-primary-600 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            Delivered ({orders.filter(o => o.status === 'delivered' || o.status === 'picked-up').length})
+          </button>
+        </div>
       </div>
 
       {/* Orders List */}
@@ -187,20 +245,12 @@ const CustomerOrders = () => {
                 </div>
               </div>
 
-              {/* Order Items */}
+              {/* Order Items - Jumia Style */}
               <div className="border-t pt-4 mb-4">
+                <h4 className="font-semibold mb-3">Order Items</h4>
                 <div className="space-y-2">
                   {order.items.map((item, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
-                        {item.selectedSize && (
-                          <p className="text-sm text-gray-600">Size: {item.selectedSize}</p>
-                        )}
-                      </div>
-                      <p className="text-sm text-gray-600">x{item.quantity}</p>
-                      <p className="font-semibold">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
-                    </div>
+                    <OrderItem key={index} item={item} />
                   ))}
                 </div>
               </div>

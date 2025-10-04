@@ -1,4 +1,4 @@
-import { ref, push, set } from 'firebase/database';
+import { ref, push, set, get } from 'firebase/database';
 import { database } from '../config/firebase';
 
 /**
@@ -132,8 +132,32 @@ export const sendPaymentReminderNotification = async (userId, orderId, amount) =
  * @param {string} userId - Customer user ID
  * @param {string} orderId - Order ID
  * @param {number} total - Order total
+ * @param {Array} orderItems - Array of order items with product details
  */
-export const sendOrderPlacedNotification = async (userId, orderId, total) => {
+export const sendOrderPlacedNotification = async (userId, orderId, total, orderItems = []) => {
+  // Get product images from order items
+  const productImages = [];
+  if (orderItems && orderItems.length > 0) {
+    // Fetch product details to get images
+    for (const item of orderItems.slice(0, 3)) { // Max 3 images
+      try {
+        const productRef = ref(database, `products/${item.productId}`);
+        const snapshot = await get(productRef);
+        if (snapshot.exists()) {
+          const product = snapshot.val();
+          if (product.images && product.images.length > 0) {
+            productImages.push({
+              url: product.images[0],
+              name: item.name,
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching product for notification:', error);
+      }
+    }
+  }
+
   return await sendNotification(userId, {
     title: '🛒 Order Placed Successfully',
     message: `Your order #${orderId.substring(0, 8)} totaling GH₵ ${total.toFixed(2)} has been placed successfully. You'll receive updates as your order progresses.`,
@@ -142,6 +166,8 @@ export const sendOrderPlacedNotification = async (userId, orderId, total) => {
       orderId,
       total,
       orderLink: `/customer/orders`,
+      productImages: productImages, // Add product images
+      itemCount: orderItems.length,
     },
   });
 };
