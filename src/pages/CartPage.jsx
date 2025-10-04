@@ -1,10 +1,22 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useCartStore } from '../store/cartStore';
-import { Link } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
+import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus } from 'lucide-react';
 
 const CartPage = () => {
+  const { role } = useAuthStore();
+  const navigate = useNavigate();
   const { items, removeItem, updateQuantity, getTotal, clearCart } = useCartStore();
+
+  // Redirect admin/agent - they shouldn't shop
+  useEffect(() => {
+    if (role === 'admin') {
+      navigate('/admin', { replace: true });
+    } else if (role === 'agent') {
+      navigate('/agent', { replace: true });
+    }
+  }, [role, navigate]);
 
   if (items.length === 0) {
     return (

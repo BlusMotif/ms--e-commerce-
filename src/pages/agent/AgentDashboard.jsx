@@ -31,6 +31,7 @@ const AgentDashboard = () => {
   const previousOrderCountRef = useRef(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [hasUnseenOrders, setHasUnseenOrders] = useState(false);
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -73,10 +74,11 @@ const AgentDashboard = () => {
           })
         );
 
-        // Check for new orders and play sound
+        // Check for new orders and start looping sound
         if (previousOrderCountRef.current > 0 && agentOrders.length > previousOrderCountRef.current) {
-          // New order detected for agent!
-          notificationSound.playOrderNotification();
+          // New order detected for agent! Start looping sound
+          notificationSound.startLoop();
+          setHasUnseenOrders(true);
         }
         previousOrderCountRef.current = agentOrders.length;
 
@@ -91,40 +93,23 @@ const AgentDashboard = () => {
     };
   }, [user, products]);
 
-  // Fetch notifications and announcements
+  // Show latest agent orders as notifications (not announcements)
   useEffect(() => {
-    const announcementsRef = ref(database, 'announcements');
-    const unsubscribeAnnouncements = onValue(announcementsRef, (snapshot) => {
-      const allNotifs = [];
-      
-      if (snapshot.exists()) {
-        const data = snapshot.val();
-        Object.keys(data).forEach((key) => {
-          const announcement = data[key];
-          
-          // Show announcements for agents or all
-          if (
-            announcement.active &&
-            (announcement.targetAudience === 'all' ||
-              announcement.targetAudience === 'agents' ||
-              announcement.targetAudience === 'agent')
-          ) {
-            allNotifs.push({
-              id: key,
-              ...announcement,
-              source: 'announcement',
-            });
-          }
-        });
-      }
-      
-      // Sort by createdAt descending, show only latest 5
-      allNotifs.sort((a, b) => b.createdAt - a.createdAt);
-      setNotifications(allNotifs.slice(0, 5));
-    });
-
-    return () => unsubscribeAnnouncements();
-  }, []);
+    // Use the agent orders already fetched to create notifications
+    const recentOrders = orders
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 5)
+      .map(order => ({
+        id: order.id,
+        title: `New Order #${order.id.slice(0, 8)}`,
+        message: `${order.customerName} placed an order including your products`,
+        type: order.isPaid || order.paymentMethod === 'cash' ? 'success' : 'info',
+        createdAt: order.createdAt,
+        source: 'order',
+      }));
+    
+    setNotifications(recentOrders);
+  }, [orders]);
 
   // Calculate stats - only count paid orders for revenue
   // Check multiple payment field possibilities for compatibility
@@ -207,6 +192,13 @@ const AgentDashboard = () => {
     notificationSound.setEnabled(newState);
   };
 
+  const handleNotificationClick = () => {
+    // Stop looping sound when notifications are opened
+    notificationSound.stopLoop();
+    setHasUnseenOrders(false);
+    setShowNotifications(!showNotifications);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -226,14 +218,14 @@ const AgentDashboard = () => {
           {/* Notifications Bell */}
           <div className="relative">
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={handleNotificationClick}
               className="relative flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
               title="View notifications"
             >
               <Bell className="w-5 h-5" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
-                  {notifications.length}
+              {hasUnseenOrders && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
+                  !
                 </span>
               )}
             </button>

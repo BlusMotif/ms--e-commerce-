@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
+import { useAuthStore } from '../store/authStore';
 import { Search, SlidersHorizontal, X, Package } from 'lucide-react';
 
 const ProductsPage = () => {
+  const { role } = useAuthStore();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -13,6 +16,15 @@ const ProductsPage = () => {
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'all');
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Redirect admin/agent - they shouldn't shop
+  useEffect(() => {
+    if (role === 'admin') {
+      navigate('/admin', { replace: true });
+    } else if (role === 'agent') {
+      navigate('/agent', { replace: true });
+    }
+  }, [role, navigate]);
 
   // Sync selectedCategory with URL params
   useEffect(() => {

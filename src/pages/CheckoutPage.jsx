@@ -11,7 +11,18 @@ import { sendOrderPlacedNotification } from '../utils/notifications';
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { items, getTotal, clearCart } = useCartStore();
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+
+  // Redirect admin/agent - they shouldn't make purchases
+  useEffect(() => {
+    if (role === 'admin') {
+      navigate('/admin', { replace: true });
+      return;
+    } else if (role === 'agent') {
+      navigate('/agent', { replace: true });
+      return;
+    }
+  }, [role, navigate]);
 
   const [deliveryMethod, setDeliveryMethod] = useState('delivery'); // 'delivery' or 'pickup'
   const [paymentMethod, setPaymentMethod] = useState('paystack'); // 'paystack' or 'cash'

@@ -5,6 +5,8 @@ class NotificationSound {
   constructor() {
     this.audioContext = null;
     this.isEnabled = true;
+    this.loopInterval = null;
+    this.isLooping = false;
   }
 
   // Initialize audio context (must be done after user interaction)
@@ -129,6 +131,30 @@ class NotificationSound {
       oscillator.start(startTime);
       oscillator.stop(startTime + 0.4);
     });
+  }
+
+  // Start looping the order notification sound until stopped
+  startLoop() {
+    if (this.isLooping) return; // Already looping
+    
+    this.isLooping = true;
+    this.playOrderNotification();
+    
+    // Play again every 5 seconds
+    this.loopInterval = setInterval(() => {
+      if (this.isLooping) {
+        this.playOrderNotification();
+      }
+    }, 5000);
+  }
+
+  // Stop the looping sound
+  stopLoop() {
+    this.isLooping = false;
+    if (this.loopInterval) {
+      clearInterval(this.loopInterval);
+      this.loopInterval = null;
+    }
   }
 
   // Enable/disable sounds

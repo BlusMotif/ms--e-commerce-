@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
 import { ChevronLeft, ChevronRight, ArrowRight, ShoppingBag, Package } from 'lucide-react';
 
 const HomePage = () => {
-  const { user } = useAuthStore();
+  const { user, role } = useAuthStore();
+  const navigate = useNavigate();
   const [banners, setBanners] = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  // Redirect admin/agent away from home page - they shouldn't make purchases
+  useEffect(() => {
+    if (role === 'admin') {
+      navigate('/admin', { replace: true });
+    } else if (role === 'agent') {
+      navigate('/agent', { replace: true });
+    }
+  }, [role, navigate]);
 
   useEffect(() => {
     let bannersLoaded = false;

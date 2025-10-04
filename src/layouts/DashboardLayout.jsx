@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../config/firebase';
 import { signOut } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import {
@@ -27,6 +29,47 @@ const DashboardLayout = () => {
   const { user, role, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+
+  // Fetch pending orders count for admin/agent
+  useEffect(() => {
+    if (role !== 'admin' && role !== 'agent') return;
+
+    const ordersRef = ref(database, 'orders');
+    const unsubscribe = onValue(ordersRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const ordersArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+
+        let count = 0;
+        if (role === 'admin') {
+          // Count all pending orders for admin
+          count = ordersArray.filter(o => 
+            o.status === 'pending' || o.status === 'processing'
+          ).length;
+        } else if (role === 'agent') {
+          // Count agent's pending orders only
+          count = ordersArray.filter(order => {
+            const hasPendingStatus = order.status === 'pending' || order.status === 'processing';
+            const hasAgentProducts = order.items?.some(item => {
+              // Check if any item belongs to this agent
+              return item.agentId === user.uid || item.createdBy === user.uid;
+            });
+            return hasPendingStatus && hasAgentProducts;
+          }).length;
+        }
+
+        setPendingOrdersCount(count);
+      } else {
+        setPendingOrdersCount(0);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [role, user]);
 
   const handleLogout = async () => {
     try {
@@ -34,7 +77,7 @@ const DashboardLayout = () => {
       logout();
       toast.success('Logged out successfully');
       navigate('/');
-    } catch (error) {
+    } catch {
       toast.error('Failed to logout');
     }
   };
@@ -108,19 +151,28 @@ const DashboardLayout = () => {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
+            const isOrdersPage = item.label === 'Orders';
+            const showBadge = isOrdersPage && pendingOrdersCount > 0;
             
             return (
               <Link
                 key={item.path}
                 to={item.path}
-                className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-colors ${
+                className={`flex items-center justify-between space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-primary-50 text-primary-600'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span className="font-medium">{item.label}</span>
+                <div className="flex items-center space-x-3">
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{item.label}</span>
+                </div>
+                {showBadge && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                    {pendingOrdersCount}
+                  </span>
+                )}
               </Link>
             );
           })}
