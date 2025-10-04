@@ -86,6 +86,17 @@ const Footer = () => {
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-sm">
           <p>&copy; {currentYear} MS Special. All rights reserved.</p>
+          <p className="mt-2 text-gray-400">
+            Developed by{' '}
+            <a 
+              href="https://github.com/BlusMotif" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-primary-400 hover:text-primary-300 transition font-semibold"
+            >
+              BlusMotif (Eleblu Nunana)
+            </a>
+          </p>
         </div>
       </div>
     </footer>
