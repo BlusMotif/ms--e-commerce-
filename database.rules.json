@@ -1,0 +1,41 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin'",
+        ".write": "$uid === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin'"
+      }
+    },
+    "products": {
+      ".read": true,
+      ".write": "root.child('users/' + auth.uid + '/role').val() === 'agent' || root.child('users/' + auth.uid + '/role').val() === 'admin'",
+      "$productId": {
+        ".write": "root.child('users/' + auth.uid + '/role').val() === 'agent' && data.child('agentId').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin'"
+      }
+    },
+    "orders": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      "$orderId": {
+        ".read": "data.child('customerId').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'agent' || root.child('users/' + auth.uid + '/role').val() === 'admin'",
+        ".write": "data.child('customerId').val() === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'agent' || root.child('users/' + auth.uid + '/role').val() === 'admin'"
+      }
+    },
+    "categories": {
+      ".read": true,
+      ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin'"
+    },
+    "banners": {
+      ".read": true,
+      ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin'"
+    },
+    "reviews": {
+      ".read": true,
+      ".write": "auth != null"
+    },
+    "settings": {
+      ".read": true,
+      ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin'"
+    }
+  }
+}
