@@ -14,6 +14,16 @@ const ProductsPage = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [showFilters, setShowFilters] = useState(false);
 
+  // Sync selectedCategory with URL params
+  useEffect(() => {
+    const categoryFromUrl = searchParams.get('category');
+    if (categoryFromUrl) {
+      setSelectedCategory(categoryFromUrl);
+    } else {
+      setSelectedCategory('all');
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     // Fetch products
     const productsRef = ref(database, 'products');
@@ -40,7 +50,10 @@ const ProductsPage = () => {
           id: key,
           ...data[key],
         }));
-        setCategories(categoriesArray.filter(cat => cat.active));
+        // Show all categories (active or not set)
+        setCategories(categoriesArray.filter(cat => cat.active !== false));
+      } else {
+        setCategories([]);
       }
     });
 
@@ -54,8 +67,19 @@ const ProductsPage = () => {
   const filteredProducts = products
     .filter((product) => {
       // Filter by category
-      if (selectedCategory !== 'all' && product.category !== selectedCategory) {
-        return false;
+      if (selectedCategory !== 'all') {
+        // Find category by slug
+        const category = categories.find(cat => cat.slug === selectedCategory);
+        
+        // If category is found, filter by categoryId
+        if (category) {
+          if (product.categoryId !== category.id) {
+            return false;
+          }
+        } else {
+          // If category slug not found, don't show any products
+          return false;
+        }
       }
       // Filter by search term
       if (searchTerm) {

@@ -21,9 +21,27 @@ const Navbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [categories, setCategories] = useState([]);
   const { user, role, logout } = useAuthStore();
   const { getItemCount } = useCartStore();
   const navigate = useNavigate();
+
+  // Fetch categories from Firebase
+  useEffect(() => {
+    const categoriesRef = ref(database, 'categories');
+    const unsubscribe = onValue(categoriesRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const categoriesArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        }));
+        setCategories(categoriesArray);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   // Listen for unread notifications
   useEffect(() => {
@@ -52,7 +70,7 @@ const Navbar = () => {
       logout();
       toast.success('Logged out successfully');
       navigate('/');
-    } catch (error) {
+    } catch {
       toast.error('Failed to logout');
     }
   };
@@ -62,13 +80,6 @@ const Navbar = () => {
     if (role === 'agent') return '/agent';
     return '/customer';
   };
-
-  const categories = [
-    { name: 'Shito', path: '/products?category=shito' },
-    { name: 'Dresses', path: '/products?category=dresses' },
-    { name: 'Bags', path: '/products?category=bags' },
-    { name: 'Others', path: '/products?category=others' },
-  ];
 
   return (
     <nav className="bg-white shadow-md sticky top-0 z-40">
@@ -91,8 +102,8 @@ const Navbar = () => {
               <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
                 {categories.map((cat) => (
                   <Link
-                    key={cat.name}
-                    to={cat.path}
+                    key={cat.id}
+                    to={`/products?category=${cat.slug}`}
                     className="block px-4 py-2 text-gray-700 hover:bg-primary-50 hover:text-primary-600 first:rounded-t-lg last:rounded-b-lg"
                   >
                     {cat.name}
@@ -216,8 +227,8 @@ const Navbar = () => {
               <p className="font-semibold text-gray-900 mb-2">Categories</p>
               {categories.map((cat) => (
                 <Link
-                  key={cat.name}
-                  to={cat.path}
+                  key={cat.id}
+                  to={`/products?category=${cat.slug}`}
                   className="block py-1 pl-4 text-gray-700 hover:text-primary-600"
                   onClick={() => setMobileMenuOpen(false)}
                 >

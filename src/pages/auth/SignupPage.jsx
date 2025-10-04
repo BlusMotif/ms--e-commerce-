@@ -4,13 +4,13 @@ import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from '
 import { ref, set } from 'firebase/database';
 import { auth, database, googleProvider } from '../../config/firebase';
 import toast from 'react-hot-toast';
-import { Mail, Lock, User as UserIcon, Phone, MapPin, Chrome } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, MapPin, Chrome, Phone } from 'lucide-react';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
-    phone: '',
+    phoneNumber: '',
     address: '',
     password: '',
     confirmPassword: '',
@@ -35,6 +35,11 @@ const SignupPage = () => {
       return;
     }
 
+    if (!formData.phoneNumber || formData.phoneNumber.length < 10) {
+      toast.error('Please enter a valid phone number');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -54,7 +59,7 @@ const SignupPage = () => {
       await set(ref(database, `users/${userCredential.user.uid}`), {
         fullName: formData.fullName,
         email: formData.email,
-        phone: formData.phone,
+        phoneNumber: formData.phoneNumber,
         address: formData.address,
         role: 'customer',
         createdAt: Date.now(),
@@ -82,7 +87,7 @@ const SignupPage = () => {
       await set(userRef, {
         fullName: userCredential.user.displayName,
         email: userCredential.user.email,
-        phone: '',
+        phoneNumber: '',
         address: '',
         role: 'customer',
         createdAt: Date.now(),
@@ -151,11 +156,11 @@ const SignupPage = () => {
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="tel"
-                  name="phone"
-                  value={formData.phone}
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
                   onChange={handleChange}
                   className="input-field pl-10"
-                  placeholder="+233 20 000 0000"
+                  placeholder="+233 XX XXX XXXX"
                   required
                 />
               </div>

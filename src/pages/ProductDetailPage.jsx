@@ -227,7 +227,7 @@ const ProductDetailPage = () => {
             {/* Brand/Category */}
             <div className="text-sm text-gray-600 mb-3">
               <span>Brand: </span>
-              <Link to={`/products?category=${product.categoryId}`} className="text-orange-500 hover:underline">
+              <Link to={`/products?category=${categories.find(c => c.id === product.categoryId)?.slug || ''}`} className="text-orange-500 hover:underline">
                 {categories.find(c => c.id === product.categoryId)?.name || 'View Category'}
               </Link>
             </div>
