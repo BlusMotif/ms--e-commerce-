@@ -26,6 +26,9 @@ import toast from 'react-hot-toast';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const { user, role, logout } = useAuthStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -92,6 +95,36 @@ const DashboardLayout = () => {
     return () => unsubscribe();
   }, [role, user, products]);
 
+  // Fetch notifications for admin and agent
+  useEffect(() => {
+    if (!user?.uid || (role !== 'admin' && role !== 'agent')) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    const userNotificationsRef = ref(database, `notifications/${user.uid}`);
+    const unsubscribeUser = onValue(userNotificationsRef, (snapshot) => {
+      const userNotifs = [];
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        Object.keys(data).forEach((key) => {
+          userNotifs.push({
+            id: key,
+            ...data[key],
+          });
+        });
+      }
+      
+      // Sort by createdAt descending and take top 5
+      userNotifs.sort((a, b) => b.createdAt - a.createdAt);
+      setNotifications(userNotifs.slice(0, 5));
+      setUnreadCount(userNotifs.filter(n => !n.read).length);
+    });
+
+    return () => unsubscribeUser();
+  }, [user, role]);
+
   const handleLogout = async () => {
     try {
       await signOut(auth);
@@ -100,6 +133,19 @@ const DashboardLayout = () => {
       navigate('/');
     } catch {
       toast.error('Failed to logout');
+    }
+  };
+
+  const getNotificationIcon = (type) => {
+    switch (type) {
+      case 'success':
+        return '✅';
+      case 'warning':
+        return '⚠️';
+      case 'error':
+        return '❌';
+      default:
+        return '🔔';
     }
   };
 
@@ -219,6 +265,94 @@ const DashboardLayout = () => {
             </button>
             
             <div className="flex items-center space-x-4 ml-auto">
+              {/* Notification Bell - Only for admin and agent */}
+              {(role === 'admin' || role === 'agent') && (
+                <div className="relative">
+                  <button
+                    onClick={() => setNotificationOpen(!notificationOpen)}
+                    className="relative p-2 text-gray-700 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse font-semibold">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Notification Dropdown - Mobile Responsive */}
+                  {notificationOpen && (
+                    <>
+                      {/* Backdrop for mobile */}
+                      <div 
+                        className="fixed inset-0 z-40 lg:hidden"
+                        onClick={() => setNotificationOpen(false)}
+                      />
+                      
+                      {/* Dropdown */}
+                      <div className="fixed lg:absolute top-16 lg:top-full right-4 lg:right-0 mt-0 lg:mt-2 w-[calc(100vw-2rem)] lg:w-96 max-w-md bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[70vh] lg:max-h-96 overflow-hidden flex flex-col">
+                        {/* Header */}
+                        <div className="flex items-center justify-between p-4 border-b">
+                          <h3 className="font-semibold text-gray-900">Notifications</h3>
+                          <button
+                            onClick={() => {
+                              setNotificationOpen(false);
+                              navigate('/notifications');
+                            }}
+                            className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                          >
+                            View All
+                          </button>
+                        </div>
+
+                        {/* Notifications List */}
+                        <div className="flex-1 overflow-y-auto">
+                          {notifications.length > 0 ? (
+                            notifications.map((notif) => (
+                              <div
+                                key={notif.id}
+                                className={`p-4 border-b hover:bg-gray-50 cursor-pointer transition ${
+                                  !notif.read ? 'bg-blue-50' : ''
+                                }`}
+                                onClick={() => {
+                                  setNotificationOpen(false);
+                                  navigate('/notifications');
+                                }}
+                              >
+                                <div className="flex items-start space-x-3">
+                                  <span className="text-xl flex-shrink-0 mt-0.5">
+                                    {getNotificationIcon(notif.type)}
+                                  </span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-900 truncate">
+                                      {notif.title}
+                                    </p>
+                                    <p className="text-xs text-gray-600 line-clamp-2 mt-1">
+                                      {notif.message}
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      {new Date(notif.createdAt).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  {!notif.read && (
+                                    <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-2" />
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-8 text-center">
+                              <Bell className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                              <p className="text-sm text-gray-500">No notifications yet</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">
                   {user?.displayName || user?.email}

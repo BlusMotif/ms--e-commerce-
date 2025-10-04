@@ -4,6 +4,7 @@ services:
     runtime: static
     buildCommand: npm install --legacy-peer-deps && npm run build
     staticPublishPath: ./dist
+    pullRequestPreviewsEnabled: true
     envVars:
       - key: NODE_VERSION
         value: 18
@@ -39,6 +40,9 @@ services:
       - path: /*
         name: X-XSS-Protection
         value: 1; mode=block
+      - path: /*
+        name: Cache-Control
+        value: no-cache
     routes:
       - type: rewrite
         source: /*

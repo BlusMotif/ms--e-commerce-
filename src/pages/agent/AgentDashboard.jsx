@@ -219,15 +219,16 @@ const AgentDashboard = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">📊 My Business Dashboard</h1>
           <p className="text-sm sm:text-base text-gray-600 mt-1">Complete overview of your sales performance</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           {/* Notifications Bell */}
           <div className="relative">
             <button
               onClick={handleNotificationClick}
-              className="relative flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
+              className="relative flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition"
               title="View notifications"
             >
               <Bell className="w-5 h-5" />
+              <span className="hidden sm:inline text-sm font-medium">Notifications</span>
               {hasUnseenOrders && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold animate-pulse">
                   !
@@ -235,65 +236,76 @@ const AgentDashboard = () => {
               )}
             </button>
             
-            {/* Notifications Dropdown */}
+            {/* Notifications Dropdown - Mobile Responsive */}
             {showNotifications && (
-              <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto">
-                <div className="p-3 border-b border-gray-200 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-900">Notifications</h3>
-                  <button 
-                    onClick={() => setShowNotifications(false)}
-                    className="text-gray-400 hover:text-gray-600"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
+              <>
+                {/* Backdrop for mobile */}
+                <div 
+                  className="fixed inset-0 z-40 lg:hidden"
+                  onClick={() => setShowNotifications(false)}
+                />
                 
-                {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-gray-500">
-                    <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                    <p>No notifications</p>
+                {/* Dropdown */}
+                <div className="fixed lg:absolute left-4 right-4 lg:left-auto lg:right-0 top-20 lg:top-full mt-0 lg:mt-2 w-auto lg:w-80 max-w-md bg-white rounded-lg shadow-xl border border-gray-200 z-50 max-h-[70vh] lg:max-h-96 overflow-hidden flex flex-col">
+                  <div className="p-3 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+                    <h3 className="font-semibold text-gray-900">Notifications</h3>
+                    <button 
+                      onClick={() => setShowNotifications(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
-                ) : (
-                  <div className="divide-y divide-gray-100">
-                    {notifications.map((notif) => (
-                      <div key={notif.id} className="p-3 hover:bg-gray-50 transition">
-                        <div className="flex items-start gap-2">
-                          <div className="flex-shrink-0 mt-1">
-                            {notif.type === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
-                            {notif.type === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
-                            {notif.type === 'info' && <Bell className="w-4 h-4 text-blue-500" />}
-                            {!notif.type && <Bell className="w-4 h-4 text-gray-400" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900">{notif.title}</p>
-                            <p className="text-xs text-gray-600 mt-1">{notif.message}</p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              {new Date(notif.createdAt).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
+                  
+                  <div className="flex-1 overflow-y-auto">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-gray-500">
+                        <Bell className="w-12 h-12 mx-auto mb-2 text-gray-300" />
+                        <p>No notifications</p>
                       </div>
-                    ))}
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {notifications.map((notif) => (
+                          <div key={notif.id} className="p-3 hover:bg-gray-50 transition">
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 mt-1">
+                                {notif.type === 'success' && <CheckCircle className="w-4 h-4 text-green-500" />}
+                                {notif.type === 'warning' && <AlertTriangle className="w-4 h-4 text-yellow-500" />}
+                                {notif.type === 'info' && <Bell className="w-4 h-4 text-blue-500" />}
+                                {!notif.type && <Bell className="w-4 h-4 text-gray-400" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-gray-900">{notif.title}</p>
+                                <p className="text-xs text-gray-600 mt-1">{notif.message}</p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {new Date(notif.createdAt).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
-                
-                <div className="p-3 border-t border-gray-200">
-                  <Link 
-                    to="/notifications" 
-                    className="text-sm text-blue-600 hover:text-blue-700 font-medium block text-center"
-                    onClick={() => setShowNotifications(false)}
-                  >
-                    View All Notifications
-                  </Link>
+                  
+                  <div className="p-3 border-t border-gray-200 flex-shrink-0">
+                    <Link 
+                      to="/notifications" 
+                      className="text-sm text-blue-600 hover:text-blue-700 font-medium block text-center"
+                      onClick={() => setShowNotifications(false)}
+                    >
+                      View All Notifications
+                    </Link>
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
           
           {/* Sound Toggle */}
           <button
             onClick={toggleSound}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+            className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors ${
               soundEnabled
                 ? 'bg-green-100 text-green-700 hover:bg-green-200'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -303,12 +315,12 @@ const AgentDashboard = () => {
             {soundEnabled ? (
               <>
                 <Volume2 size={20} />
-                <span className="font-medium">Sound On</span>
+                <span className="text-xs sm:text-sm font-medium">Sound On</span>
               </>
             ) : (
               <>
                 <VolumeX size={20} />
-                <span className="font-medium">Sound Off</span>
+                <span className="text-xs sm:text-sm font-medium">Sound Off</span>
               </>
             )}
           </button>

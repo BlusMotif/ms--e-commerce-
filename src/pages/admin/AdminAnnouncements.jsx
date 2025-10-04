@@ -174,21 +174,21 @@ const AdminAnnouncements = () => {
   }
 
   return (
-    <div>
+    <div className="pb-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold flex items-center space-x-3">
-            <Megaphone className="w-8 h-8 text-primary-600" />
+          <h1 className="text-2xl sm:text-3xl font-bold flex items-center space-x-3">
+            <Megaphone className="w-6 h-6 sm:w-8 sm:h-8 text-primary-600" />
             <span>Announcements</span>
           </h1>
-          <p className="text-gray-600 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 mt-1">
             Create and manage system-wide announcements for users
           </p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="btn-primary flex items-center space-x-2"
+          className="btn-primary flex items-center justify-center space-x-2 w-full sm:w-auto"
         >
           <Plus className="w-5 h-5" />
           <span>New Announcement</span>
@@ -196,20 +196,20 @@ const AdminAnnouncements = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="card text-center">
           <p className="text-sm text-gray-600 mb-1">Total Announcements</p>
-          <p className="text-3xl font-bold text-primary-600">{announcements.length}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-primary-600">{announcements.length}</p>
         </div>
         <div className="card text-center">
           <p className="text-sm text-gray-600 mb-1">Active</p>
-          <p className="text-3xl font-bold text-green-600">
+          <p className="text-2xl sm:text-3xl font-bold text-green-600">
             {announcements.filter((a) => a.active).length}
           </p>
         </div>
         <div className="card text-center">
           <p className="text-sm text-gray-600 mb-1">Inactive</p>
-          <p className="text-3xl font-bold text-gray-600">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-600">
             {announcements.filter((a) => !a.active).length}
           </p>
         </div>
@@ -220,62 +220,71 @@ const AdminAnnouncements = () => {
         <div className="space-y-4">
           {announcements.map((announcement) => (
             <div key={announcement.id} className="card">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <h3 className="font-semibold text-lg">{announcement.title}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(announcement.type)}`}>
-                      {announcement.type}
-                    </span>
-                    <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
-                      {getAudienceLabel(announcement.targetAudience)}
-                    </span>
-                    {announcement.active ? (
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex items-center space-x-1">
-                        <Eye className="w-3 h-3" />
-                        <span>Active</span>
+              <div className="flex flex-col space-y-3">
+                {/* Title and Badges */}
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-lg mb-2">{announcement.title}</h3>
+                    
+                    {/* Badges - Stack on mobile, inline on desktop */}
+                    <div className="flex flex-wrap gap-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getTypeColor(announcement.type)}`}>
+                        {announcement.type}
                       </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 flex items-center space-x-1">
-                        <EyeOff className="w-3 h-3" />
-                        <span>Inactive</span>
+                      <span className="px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                        {getAudienceLabel(announcement.targetAudience)}
                       </span>
-                    )}
+                      {announcement.active ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 flex items-center space-x-1">
+                          <Eye className="w-3 h-3" />
+                          <span>Active</span>
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800 flex items-center space-x-1">
+                          <EyeOff className="w-3 h-3" />
+                          <span>Inactive</span>
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-gray-700 mb-2">{announcement.message}</p>
-                  <p className="text-sm text-gray-500">
-                    Created: {new Date(announcement.createdAt).toLocaleString()}
-                  </p>
+
+                  {/* Actions - Horizontal on mobile and desktop */}
+                  <div className="flex space-x-2 sm:ml-4 justify-end">
+                    <button
+                      onClick={() => handleToggleActive(announcement.id, announcement.active)}
+                      className={`p-2 rounded-lg transition flex-shrink-0 ${
+                        announcement.active
+                          ? 'text-gray-600 hover:bg-gray-100'
+                          : 'text-green-600 hover:bg-green-50'
+                      }`}
+                      title={announcement.active ? 'Deactivate' : 'Activate'}
+                    >
+                      {announcement.active ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                    <button
+                      onClick={() => handleEdit(announcement)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition flex-shrink-0"
+                      title="Edit"
+                    >
+                      <Edit className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(announcement.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition flex-shrink-0"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Actions */}
-                <div className="flex space-x-2 ml-4">
-                  <button
-                    onClick={() => handleToggleActive(announcement.id, announcement.active)}
-                    className={`p-2 rounded-lg transition ${
-                      announcement.active
-                        ? 'text-gray-600 hover:bg-gray-100'
-                        : 'text-green-600 hover:bg-green-50'
-                    }`}
-                    title={announcement.active ? 'Deactivate' : 'Activate'}
-                  >
-                    {announcement.active ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                  <button
-                    onClick={() => handleEdit(announcement)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                    title="Edit"
-                  >
-                    <Edit className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(announcement.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
+                {/* Message */}
+                <p className="text-gray-700 text-sm sm:text-base">{announcement.message}</p>
+                
+                {/* Timestamp */}
+                <p className="text-xs sm:text-sm text-gray-500">
+                  Created: {new Date(announcement.createdAt).toLocaleString()}
+                </p>
               </div>
             </div>
           ))}
@@ -299,10 +308,10 @@ const AdminAnnouncements = () => {
 
       {/* Create/Edit Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-2xl w-full p-4 sm:p-6 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold">
                 {editingAnnouncement ? 'Edit Announcement' : 'New Announcement'}
               </h2>
               <button
@@ -310,9 +319,9 @@ const AdminAnnouncements = () => {
                   setShowModal(false);
                   resetForm();
                 }}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-gray-500 hover:text-gray-700 flex-shrink-0"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
@@ -326,7 +335,7 @@ const AdminAnnouncements = () => {
                   name="title"
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="input"
+                  className="input text-sm sm:text-base"
                   placeholder="Announcement title"
                   required
                 />
@@ -340,14 +349,14 @@ const AdminAnnouncements = () => {
                   name="message"
                   value={formData.message}
                   onChange={handleInputChange}
-                  className="input"
+                  className="input text-sm sm:text-base"
                   rows="4"
                   placeholder="Announcement message"
                   required
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Type
@@ -356,7 +365,7 @@ const AdminAnnouncements = () => {
                     name="type"
                     value={formData.type}
                     onChange={handleInputChange}
-                    className="input"
+                    className="input text-sm sm:text-base"
                   >
                     <option value="info">Info</option>
                     <option value="success">Success</option>
@@ -374,7 +383,7 @@ const AdminAnnouncements = () => {
                     name="targetAudience"
                     value={formData.targetAudience}
                     onChange={handleInputChange}
-                    className="input"
+                    className="input text-sm sm:text-base"
                   >
                     <option value="all">All Users</option>
                     <option value="customers">Customers Only</option>
@@ -384,36 +393,36 @@ const AdminAnnouncements = () => {
                 </div>
               </div>
 
-              <div className="flex items-center space-x-2">
+              <div className="flex items-start space-x-2">
                 <input
                   type="checkbox"
                   id="active"
                   name="active"
                   checked={formData.active}
                   onChange={handleInputChange}
-                  className="w-4 h-4 text-primary-600 rounded"
+                  className="w-4 h-4 text-primary-600 rounded mt-0.5 flex-shrink-0"
                 />
-                <label htmlFor="active" className="text-sm font-medium text-gray-700">
+                <label htmlFor="active" className="text-xs sm:text-sm font-medium text-gray-700">
                   Active (users will see this announcement immediately)
                 </label>
               </div>
 
-              <div className="flex space-x-3 pt-4">
+              <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 pt-4">
                 <button
                   type="button"
                   onClick={() => {
                     setShowModal(false);
                     resetForm();
                   }}
-                  className="btn-outline flex-1"
+                  className="btn-outline flex-1 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary flex-1 flex items-center justify-center space-x-2"
+                  className="btn-primary flex-1 flex items-center justify-center space-x-2 text-sm sm:text-base"
                 >
-                  <Save className="w-5 h-5" />
+                  <Save className="w-4 h-4 sm:w-5 sm:h-5" />
                   <span>{editingAnnouncement ? 'Update' : 'Create'}</span>
                 </button>
               </div>
