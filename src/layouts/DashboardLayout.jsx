@@ -83,34 +83,28 @@ const DashboardLayout = () => {
   };
 
   const getMenuItems = () => {
-    const baseItems = [
-      { path: '/', label: 'Home', icon: Home },
-      { path: `/${role}`, label: 'Dashboard', icon: LayoutDashboard },
-    ];
-
     if (role === 'customer') {
       return [
-        ...baseItems,
+        { path: '/', label: 'Home', icon: Home },
+        { path: '/customer', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/customer/orders', label: 'My Orders', icon: ShoppingCart },
         { path: '/customer/profile', label: 'Profile', icon: User },
-        { path: '/notifications', label: 'Notifications', icon: Bell },
       ];
     }
 
     if (role === 'agent') {
       return [
-        ...baseItems,
+        { path: '/agent', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/agent/products', label: 'Products', icon: Package },
         { path: '/agent/orders', label: 'Orders', icon: ShoppingCart },
         { path: '/agent/analytics', label: 'Analytics', icon: BarChart3 },
         { path: '/agent/settings', label: 'Settings', icon: Settings },
-        { path: '/notifications', label: 'Notifications', icon: Bell },
       ];
     }
 
     if (role === 'admin') {
       return [
-        ...baseItems,
+        { path: '/admin', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/admin/products', label: 'Products', icon: Package },
         { path: '/admin/orders', label: 'Orders', icon: ShoppingCart },
         { path: '/admin/agents', label: 'Agents', icon: Users },
@@ -118,11 +112,13 @@ const DashboardLayout = () => {
         { path: '/admin/categories', label: 'Categories', icon: Tag },
         { path: '/admin/banners', label: 'Banners', icon: ImageIcon },
         { path: '/admin/settings', label: 'Settings', icon: Settings },
-        { path: '/notifications', label: 'Notifications', icon: Bell },
       ];
     }
 
-    return baseItems;
+    // Fallback for no role
+    return [
+      { path: '/', label: 'Home', icon: Home },
+    ];
   };
 
   const menuItems = getMenuItems();

@@ -49,7 +49,14 @@ const AdminDashboard = () => {
         const ordersArray = Object.keys(data).map((key) => ({
           id: key,
           ...data[key],
-        }));
+        })).filter(order => {
+          // Exclude cancelled orders UNLESS they are Cash on Delivery
+          const isCancelled = order.status === 'cancelled' || order.paymentStatus === 'cancelled';
+          const isCashOnDelivery = order.paymentMethod === 'cash' || order.paymentMethod === 'cod';
+          
+          // Show if: NOT cancelled OR is cash on delivery
+          return !isCancelled || isCashOnDelivery;
+        });
         
         // Check for new orders and start looping sound
         if (previousOrderCountRef.current > 0 && ordersArray.length > previousOrderCountRef.current) {
@@ -113,10 +120,9 @@ const AdminDashboard = () => {
 
   // Show latest orders as notifications (not announcements)
   useEffect(() => {
-    // Use the orders already fetched to create notifications
+    // Use the orders already fetched to create notifications - show ALL orders
     const recentOrders = orders
       .sort((a, b) => b.createdAt - a.createdAt)
-      .slice(0, 5)
       .map(order => ({
         id: order.id,
         title: `New Order #${order.id.slice(0, 8)}`,
@@ -128,6 +134,19 @@ const AdminDashboard = () => {
     
     setNotifications(recentOrders);
   }, [orders]);
+
+  // Stop sound on any click/interaction
+  useEffect(() => {
+    const handleAnyClick = () => {
+      if (notificationSound.isLooping) {
+        notificationSound.stopLoop();
+        setHasUnseenOrders(false);
+      }
+    };
+
+    document.addEventListener('click', handleAnyClick);
+    return () => document.removeEventListener('click', handleAnyClick);
+  }, []);
 
   // Function to delete all orders (requires authentication)
   const handleDeleteAllOrders = async () => {
