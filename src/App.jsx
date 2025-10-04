@@ -29,6 +29,7 @@ import AgentDashboard from './pages/agent/AgentDashboard';
 import AgentProducts from './pages/agent/AgentProducts';
 import AgentOrders from './pages/agent/AgentOrders';
 import AgentAnalytics from './pages/agent/AgentAnalytics';
+import AgentSettings from './pages/agent/AgentSettings';
 
 // Admin Pages
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -131,6 +132,7 @@ function App() {
             <Route path="products" element={<AgentProducts />} />
             <Route path="orders" element={<AgentOrders />} />
             <Route path="analytics" element={<AgentAnalytics />} />
+            <Route path="settings" element={<AgentSettings />} />
           </Route>
 
           {/* Admin Dashboard */}

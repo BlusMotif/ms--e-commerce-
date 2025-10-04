@@ -155,41 +155,43 @@ const NotificationsPage = () => {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters - Scrollable on Mobile */}
       <div className="card mb-6">
-        <div className="flex items-center space-x-2">
-          <Filter className="w-5 h-5 text-gray-600" />
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'all'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              All ({notifications.length})
-            </button>
-            <button
-              onClick={() => setFilter('unread')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'unread'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Unread ({unreadCount})
-            </button>
-            <button
-              onClick={() => setFilter('read')}
-              className={`px-4 py-2 rounded-lg font-medium transition ${
-                filter === 'read'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Read ({notifications.filter(n => n.read).length})
-            </button>
+        <div className="flex items-center gap-2">
+          <Filter className="w-5 h-5 text-gray-600 flex-shrink-0" />
+          <div className="overflow-x-auto flex-1">
+            <div className="flex gap-2 min-w-max">
+              <button
+                onClick={() => setFilter('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  filter === 'all'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                All ({notifications.length})
+              </button>
+              <button
+                onClick={() => setFilter('unread')}
+                className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  filter === 'unread'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Unread ({unreadCount})
+              </button>
+              <button
+                onClick={() => setFilter('read')}
+                className={`px-4 py-2 rounded-lg font-medium transition whitespace-nowrap ${
+                  filter === 'read'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Read ({notifications.filter(n => n.read).length})
+              </button>
+            </div>
           </div>
         </div>
       </div>
