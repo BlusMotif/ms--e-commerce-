@@ -9,8 +9,19 @@ const HomePage = () => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let bannersLoaded = false;
+    let productsLoaded = false;
+    let categoriesLoaded = false;
+
+    const checkAllLoaded = () => {
+      if (bannersLoaded && productsLoaded && categoriesLoaded) {
+        setLoading(false);
+      }
+    };
+
     // Fetch banners
     const bannersRef = ref(database, 'banners');
     const unsubscribeBanners = onValue(bannersRef, (snapshot) => {
@@ -21,6 +32,8 @@ const HomePage = () => {
           .filter((banner) => banner.active);
         setBanners(bannersArray);
       }
+      bannersLoaded = true;
+      checkAllLoaded();
     });
 
     // Fetch featured products
@@ -34,6 +47,8 @@ const HomePage = () => {
           .slice(0, 8);
         setFeaturedProducts(productsArray);
       }
+      productsLoaded = true;
+      checkAllLoaded();
     });
 
     // Fetch categories
@@ -46,6 +61,8 @@ const HomePage = () => {
           .slice(0, 6); // Show up to 6 categories
         setCategories(categoriesArray);
       }
+      categoriesLoaded = true;
+      checkAllLoaded();
     });
 
     return () => {
@@ -72,9 +89,20 @@ const HomePage = () => {
     setCurrentBanner((prev) => (prev - 1 + banners.length) % banners.length);
   };
 
+  // Show loading spinner while data is being fetched
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-orange-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg font-medium">Loading MS Special...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen">
-      {/* Hero Banner Slider */}
+    <div className="min-h-screen">{/* Hero Banner Slider */}
       <section className="relative h-[500px] bg-gray-200 overflow-hidden">
         {banners.length > 0 ? (
           <>
@@ -140,15 +168,16 @@ const HomePage = () => {
             </div>
           </>
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-600 to-primary-700 flex items-center justify-center">
-            <div className="text-center text-white px-4">
+          <div className="absolute inset-0 bg-gray-100 flex items-center justify-center">
+            <div className="text-center text-gray-800 px-4">
+              <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400 animate-pulse" />
               <h1 className="text-5xl md:text-6xl font-bold mb-4">Welcome to MS Special</h1>
-              <p className="text-xl md:text-2xl mb-8">
+              <p className="text-xl md:text-2xl mb-8 text-gray-600">
                 Premium Shito, Stylish Dresses & Quality Bags
               </p>
               <Link
                 to="/products"
-                className="inline-flex items-center space-x-2 bg-white text-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+                className="inline-flex items-center space-x-2 bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition"
               >
                 <span>Shop Now</span>
                 <ArrowRight className="w-5 h-5" />
