@@ -89,7 +89,7 @@ const Footer = () => {
           <p className="mt-2 text-gray-400">
             Developed by{' '}
             <a 
-              href="https://github.com/BlusMotif" 
+              href="https://blusmotif.netlify.app/" 
               target="_blank" 
               rel="noopener noreferrer"
               className="text-primary-400 hover:text-primary-300 transition font-semibold"
