@@ -4,8 +4,11 @@ import { database } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { Package, Edit, Trash2, Eye, Search, Filter, CheckCircle, XCircle, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { logActivity } from '../../utils/activityLogger';
+import { useAuthStore } from '../../store/authStore';
 
 const AdminProducts = () => {
+  const { user } = useAuthStore();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -56,11 +59,22 @@ const AdminProducts = () => {
 
   const handleToggleFeatured = async (productId, currentStatus) => {
     try {
+      const product = products.find(p => p.id === productId);
       const productRef = ref(database, `products/${productId}`);
       await update(productRef, {
         featured: !currentStatus,
         updatedAt: Date.now(),
       });
+      
+      // Log the activity
+      await logActivity(
+        user.uid,
+        user.displayName || user.email || 'Admin',
+        'update',
+        'product',
+        `${!currentStatus ? 'Featured' : 'Unfeatured'} product: ${product?.name || 'Unknown'}`
+      );
+      
       toast.success(`Product ${!currentStatus ? 'featured' : 'unfeatured'} successfully!`);
     } catch (error) {
       console.error('Error updating product:', error);
@@ -73,6 +87,16 @@ const AdminProducts = () => {
       try {
         const productRef = ref(database, `products/${productId}`);
         await remove(productRef);
+        
+        // Log the activity
+        await logActivity(
+          user.uid,
+          user.displayName || user.email || 'Admin',
+          'delete',
+          'product',
+          `Deleted product: ${productName}`
+        );
+        
         toast.success('Product deleted successfully!');
       } catch (error) {
         console.error('Error deleting product:', error);

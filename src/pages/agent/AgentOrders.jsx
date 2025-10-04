@@ -4,6 +4,8 @@ import { database } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { Package, Clock, Truck, CheckCircle, XCircle, Eye, ChevronDown, ChevronUp, DollarSign } from 'lucide-react';
 import { sendOrderStatusNotification, sendPaymentConfirmationNotification } from '../../utils/notifications';
+import { logActivity } from '../../utils/activityLogger';
+import { useAuthStore } from '../../store/authStore';
 
 // Order Item Component with Product Image
 const OrderItem = ({ item }) => {
@@ -62,6 +64,7 @@ const OrderItem = ({ item }) => {
 };
 
 const AgentOrders = () => {
+  const { user } = useAuthStore();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -98,6 +101,15 @@ const AgentOrders = () => {
         updatedAt: Date.now(),
       });
       
+      // Log the activity
+      await logActivity(
+        user.uid,
+        user.displayName || user.email || 'Agent',
+        'update',
+        'order',
+        `Changed order #${orderId.substring(0, 8)} status to ${newStatus}`
+      );
+      
       // Send notification to customer
       if (order && order.userId) {
         await sendOrderStatusNotification(order.userId, orderId, order.status, newStatus);
@@ -116,10 +128,20 @@ const AgentOrders = () => {
       const orderRef = ref(database, `orders/${orderId}`);
       
       await update(orderRef, {
+        isPaid: true,
         paymentStatus: 'paid',
         paidAt: Date.now(),
         updatedAt: Date.now(),
       });
+      
+      // Log the activity
+      await logActivity(
+        user.uid,
+        user.displayName || user.email || 'Agent',
+        'update',
+        'payment',
+        `Confirmed payment for order #${orderId.substring(0, 8)} - GH₵${order.total.toFixed(2)}`
+      );
       
       // Send payment confirmation notification to customer
       if (order && order.userId) {

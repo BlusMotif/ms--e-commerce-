@@ -112,11 +112,16 @@ const AgentDashboard = () => {
         const product = products.find((p) => p.name === item.name);
         return product && (product.agentId === user.uid || product.createdBy === user.uid);
       })
-      .map(item => ({
-        ...item,
-        orderId: order.id,
-        orderDate: order.createdAt
-      }))
+      .map(item => {
+        // Find the actual product to get the correct image
+        const product = products.find((p) => p.name === item.name || p.id === item.productId);
+        return {
+          ...item,
+          image: item.image || product?.image || product?.images?.[0] || '',
+          orderId: order.id,
+          orderDate: order.createdAt
+        };
+      })
   );
 
   // Group sold items by product name and calculate totals

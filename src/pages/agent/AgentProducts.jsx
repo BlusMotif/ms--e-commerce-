@@ -4,6 +4,7 @@ import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
 import { toast } from 'react-hot-toast';
 import { Plus, Edit, Trash2, X, Image as ImageIcon, Save, Upload } from 'lucide-react';
+import { logActivity } from '../../utils/activityLogger';
 
 const AgentProducts = () => {
   const { user } = useAuthStore();
@@ -165,12 +166,32 @@ const AgentProducts = () => {
         // Update existing product
         const productRef = ref(database, `products/${editingProduct.id}`);
         await update(productRef, productData);
+        
+        // Log the activity
+        await logActivity(
+          user.uid,
+          user.displayName || user.email || 'Agent',
+          'update',
+          'product',
+          `Updated product: ${formData.name}`
+        );
+        
         toast.success('Product updated successfully!');
       } else {
         // Create new product
         productData.createdAt = Date.now();
         const productsRef = ref(database, 'products');
         await push(productsRef, productData);
+        
+        // Log the activity
+        await logActivity(
+          user.uid,
+          user.displayName || user.email || 'Agent',
+          'create',
+          'product',
+          `Created new product: ${formData.name}`
+        );
+        
         toast.success('Product created successfully!');
       }
 
@@ -204,8 +225,22 @@ const AgentProducts = () => {
   const handleDelete = async (productId) => {
     if (window.confirm('Are you sure you want to delete this product?')) {
       try {
+        // Get product name before deleting
+        const product = products.find(p => p.id === productId);
+        const productName = product?.name || 'Unknown Product';
+        
         const productRef = ref(database, `products/${productId}`);
         await remove(productRef);
+        
+        // Log the activity
+        await logActivity(
+          user.uid,
+          user.displayName || user.email || 'Agent',
+          'delete',
+          'product',
+          `Deleted product: ${productName}`
+        );
+        
         toast.success('Product deleted successfully!');
       } catch (error) {
         console.error('Error deleting product:', error);

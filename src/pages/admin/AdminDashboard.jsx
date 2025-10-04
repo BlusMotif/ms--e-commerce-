@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue } from 'firebase/database';
-import { database } from '../../config/firebase';
+import { ref, onValue, remove, set } from 'firebase/database';
+import { database, auth } from '../../config/firebase';
+import { EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { Link } from 'react-router-dom';
 import { 
   ShoppingCart, 
@@ -13,7 +14,10 @@ import {
   CheckCircle,
   AlertTriangle,
   Box,
-  ShoppingBag 
+  ShoppingBag,
+  Trash2,
+  History,
+  RotateCcw
 } from 'lucide-react';
 
 const AdminDashboard = () => {
@@ -21,6 +25,11 @@ const AdminDashboard = () => {
   const [products, setProducts] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [agentLogs, setAgentLogs] = useState([]);
+  const [showLogsModal, setShowLogsModal] = useState(false);
 
   useEffect(() => {
     const ordersRef = ref(database, 'orders');
@@ -60,12 +69,119 @@ const AdminDashboard = () => {
       }
     });
 
+    // Fetch agent activity logs
+    const logsRef = ref(database, 'agentLogs');
+    const unsubscribeLogs = onValue(logsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const logsArray = Object.keys(data).map((key) => ({
+          id: key,
+          ...data[key],
+        })).sort((a, b) => b.timestamp - a.timestamp);
+        setAgentLogs(logsArray);
+      } else {
+        setAgentLogs([]);
+      }
+    });
+
     return () => {
       unsubscribeOrders();
       unsubscribeProducts();
       unsubscribeUsers();
+      unsubscribeLogs();
     };
   }, []);
+
+  // Function to delete all orders (requires authentication)
+  const handleDeleteAllOrders = async () => {
+    if (!deletePassword) {
+      setDeleteError('Please enter your password');
+      return;
+    }
+
+    try {
+      // Get current user
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        setDeleteError('No authenticated user found. Please log in again.');
+        return;
+      }
+
+      // Create credential with user's email and entered password
+      const credential = EmailAuthProvider.credential(user.email, deletePassword);
+      
+      // Re-authenticate to verify password
+      await reauthenticateWithCredential(user, credential);
+      
+      // If re-authentication succeeds, delete all orders
+      const ordersRef = ref(database, 'orders');
+      await remove(ordersRef);
+      
+      // Log this action
+      const logRef = ref(database, `agentLogs/${Date.now()}`);
+      await set(logRef, {
+        action: 'DELETE_ALL_ORDERS',
+        performedBy: user.email || 'Admin',
+        timestamp: Date.now(),
+        details: `Deleted ${orders.length} orders`
+      });
+
+      setShowDeleteModal(false);
+      setDeletePassword('');
+      setDeleteError('');
+      alert('All orders have been successfully deleted!');
+    } catch (error) {
+      console.error('Delete error:', error);
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        setDeleteError('Incorrect password! Access denied.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setDeleteError('Too many failed attempts. Please try again later.');
+      } else {
+        setDeleteError('Error: ' + error.message);
+      }
+    }
+  };
+
+  // Function to reset agent logs
+  const handleResetLogs = async () => {
+    if (!window.confirm('Are you sure you want to clear all activity logs? This cannot be undone.')) {
+      return;
+    }
+
+    const password = prompt('Enter your admin password to confirm:');
+    if (!password) {
+      return;
+    }
+
+    try {
+      // Get current user
+      const user = auth.currentUser;
+      if (!user || !user.email) {
+        alert('No authenticated user found. Please log in again.');
+        return;
+      }
+
+      // Create credential with user's email and entered password
+      const credential = EmailAuthProvider.credential(user.email, password);
+      
+      // Re-authenticate to verify password
+      await reauthenticateWithCredential(user, credential);
+      
+      // If re-authentication succeeds, clear logs
+      const logsRef = ref(database, 'agentLogs');
+      await remove(logsRef);
+      alert('Activity logs have been cleared successfully!');
+    } catch (error) {
+      console.error('Reset logs error:', error);
+      if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+        alert('Incorrect password! Access denied.');
+      } else if (error.code === 'auth/too-many-requests') {
+        alert('Too many failed attempts. Please try again later.');
+      } else {
+        alert('Error clearing logs: ' + error.message);
+      }
+    }
+  };
 
   // Calculate stats - only count paid orders for revenue
   // Check multiple payment field possibilities for compatibility
@@ -93,11 +209,16 @@ const AdminDashboard = () => {
 
   // Get sold items from paid orders with product details
   const soldItems = paidOrders.flatMap(order => 
-    order.items.map(item => ({
-      ...item,
-      orderId: order.id,
-      orderDate: order.createdAt
-    }))
+    order.items.map(item => {
+      // Find the actual product to get the correct image
+      const product = products.find(p => p.name === item.name || p.id === item.productId);
+      return {
+        ...item,
+        image: item.image || product?.image || product?.images?.[0] || '',
+        orderId: order.id,
+        orderDate: order.createdAt
+      };
+    })
   );
 
   // Group sold items by product name and calculate totals
@@ -417,6 +538,171 @@ const AdminDashboard = () => {
                   {soldProducts.reduce((sum, p) => sum + p.totalQuantity, 0)} items sold
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Controls Section */}
+      <div className="card bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200">
+        <h2 className="text-xl font-bold mb-4 text-red-900 flex items-center gap-2">
+          <AlertTriangle className="w-6 h-6" />
+          Admin Controls (Danger Zone)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition shadow-md"
+          >
+            <Trash2 className="w-5 h-5" />
+            Delete All Orders
+          </button>
+          
+          <button
+            onClick={() => setShowLogsModal(true)}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition shadow-md"
+          >
+            <History className="w-5 h-5" />
+            View Activity Logs ({agentLogs.length})
+          </button>
+        </div>
+      </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">Delete All Orders</h3>
+                <p className="text-sm text-gray-600">This action cannot be undone!</p>
+              </div>
+            </div>
+            
+            <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+              <p className="text-sm text-red-800">
+                ⚠️ You are about to delete <strong>{orders.length} orders</strong>. This will permanently remove all order data from the system.
+              </p>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Enter admin password to confirm:
+              </label>
+              <input
+                type="password"
+                value={deletePassword}
+                onChange={(e) => setDeletePassword(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleDeleteAllOrders()}
+                className="input"
+                placeholder="Enter password"
+                autoFocus
+              />
+              {deleteError && (
+                <p className="text-red-600 text-sm mt-2">❌ {deleteError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setDeletePassword('');
+                  setDeleteError('');
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteAllOrders}
+                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Logs Modal */}
+      {showLogsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <History className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">Agent Activity Logs</h3>
+                    <p className="text-sm text-gray-600">{agentLogs.length} total activities recorded</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleResetLogs}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg font-medium transition"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Clear Logs
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              {agentLogs.length > 0 ? (
+                <div className="space-y-3">
+                  {agentLogs.map((log) => (
+                    <div key={log.id} className="bg-gray-50 border border-gray-200 rounded-lg p-4 hover:bg-gray-100 transition">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                              log.action === 'DELETE_ALL_ORDERS' ? 'bg-red-100 text-red-700' :
+                              log.action === 'ADD_PRODUCT' ? 'bg-green-100 text-green-700' :
+                              log.action === 'UPDATE_PRODUCT' ? 'bg-blue-100 text-blue-700' :
+                              log.action === 'DELETE_PRODUCT' ? 'bg-orange-100 text-orange-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {log.action.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-sm font-medium text-gray-900">
+                              {log.performedBy}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-600">{log.details}</p>
+                        </div>
+                        <div className="text-right ml-4">
+                          <p className="text-xs text-gray-500">
+                            {new Date(log.timestamp).toLocaleDateString()}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(log.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <History className="w-16 h-16 mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">No activity logs yet</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowLogsModal(false)}
+                className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg font-medium transition"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
