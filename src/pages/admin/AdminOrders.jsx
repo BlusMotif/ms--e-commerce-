@@ -4,6 +4,7 @@ import { database } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
 import { Package, Clock, Truck, CheckCircle, XCircle, ChevronDown, ChevronUp, Search, Filter, DollarSign, Calendar } from 'lucide-react';
 import { sendOrderStatusNotification, sendPaymentConfirmationNotification } from '../../utils/notifications';
+import { markOrderNotificationsAsRead } from '../../utils/notificationHelpers';
 
 // Order Item Component with Product Image
 const OrderItem = ({ item }) => {
@@ -408,7 +409,15 @@ const AdminOrders = () => {
 
               {/* Expand/Collapse Button */}
               <button
-                onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
+                onClick={() => {
+                  const newExpanded = expandedOrder === order.id ? null : order.id;
+                  setExpandedOrder(newExpanded);
+                  
+                  // Mark order notifications as read when viewing the order details
+                  if (newExpanded && order.customerId) {
+                    markOrderNotificationsAsRead(order.customerId, order.id);
+                  }
+                }}
                 className="w-full flex items-center justify-between py-2 text-primary-600 hover:text-primary-700 font-medium border-t"
               >
                 <span>View Order Details</span>

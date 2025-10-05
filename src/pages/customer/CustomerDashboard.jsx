@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
+import { markOrderNotificationsAsRead } from '../../utils/notificationHelpers';
 import { 
   ShoppingBag, 
   Package, 
@@ -83,6 +84,11 @@ const CustomerDashboard = () => {
   const handleViewOrder = (order) => {
     setSelectedOrder(order);
     setShowOrderModal(true);
+    
+    // Mark order notifications as read when viewing the order
+    if (user?.uid && order?.id) {
+      markOrderNotificationsAsRead(user.uid, order.id);
+    }
   };
 
   if (loading) {

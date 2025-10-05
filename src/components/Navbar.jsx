@@ -86,8 +86,19 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-primary-600">MS Special</span>
+          <Link to="/" className="flex items-center space-x-2 group">
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
+                <span className="text-white font-bold text-xl">MS</span>
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-white"></div>
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">
+                MS Special
+              </span>
+              <span className="text-xs text-gray-500 font-medium hidden sm:block">Quality Products</span>
+            </div>
           </Link>
 
           {/* Desktop Navigation */}

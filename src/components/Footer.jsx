@@ -11,7 +11,18 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About */}
           <div>
-            <h3 className="text-white text-lg font-bold mb-4">MS Special</h3>
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-lg">
+                  <span className="text-white font-bold text-lg">MS</span>
+                </div>
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-orange-500 rounded-full border-2 border-gray-900"></div>
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="text-white text-xl font-bold">MS Special</span>
+                <span className="text-xs text-gray-400">Quality Products</span>
+              </div>
+            </div>
             <p className="text-sm">
               Your one-stop shop for premium Shito pepper sauce, stylish dresses, and quality bags.
             </p>
