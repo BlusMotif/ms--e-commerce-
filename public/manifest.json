@@ -1,0 +1,22 @@
+{
+  "name": "MS Special - Quality Products",
+  "short_name": "MS Special",
+  "description": "Shop premium Shito pepper sauce, stylish dresses, and quality bags at MS Special",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#7C3AED",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "business"],
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr"
+}

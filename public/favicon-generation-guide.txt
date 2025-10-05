@@ -1,0 +1,12 @@
+<!-- This is a placeholder - We'll use the SVG as primary favicon -->
+<!-- For production, you can generate PNG versions using: -->
+<!-- https://realfavicongenerator.net/ or similar tools -->
+<!-- Upload the favicon.svg to generate all sizes -->
+
+<!-- Recommended sizes for webapp icons: -->
+<!-- - favicon-16x16.png -->
+<!-- - favicon-32x32.png -->
+<!-- - favicon-48x48.png -->
+<!-- - apple-touch-icon.png (180x180) -->
+<!-- - android-chrome-192x192.png -->
+<!-- - android-chrome-512x512.png -->
