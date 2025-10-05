@@ -192,10 +192,25 @@ const AgentDashboard = () => {
     .slice(0, 5);
 
   // Toggle notification sound
-  const toggleSound = () => {
+  const toggleSound = async () => {
     const newState = !soundEnabled;
     setSoundEnabled(newState);
     notificationSound.setEnabled(newState);
+    
+    // Request notification permission when enabling sounds on mobile
+    if (newState && 'Notification' in window) {
+      const permission = await notificationSound.requestNotificationPermission();
+      if (permission === 'granted') {
+        // Show success message
+        notificationSound.showNotification('Notifications Enabled', {
+          body: 'You will receive alerts for new orders even when the app is in the background.',
+          icon: '/favicon.svg',
+          requireInteraction: false
+        });
+      } else if (permission === 'denied') {
+        alert('Please enable notifications in your browser settings to receive alerts when the app is in the background.');
+      }
+    }
   };
 
   const handleNotificationClick = () => {

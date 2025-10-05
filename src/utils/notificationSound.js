@@ -7,6 +7,59 @@ class NotificationSound {
     this.isEnabled = true;
     this.loopInterval = null;
     this.isLooping = false;
+    this.isUnlocked = false; // Track if audio is unlocked on mobile
+    this.initializeAudioUnlock();
+  }
+
+  // Initialize audio unlock for mobile devices
+  initializeAudioUnlock() {
+    // Add event listeners for user interactions to unlock audio
+    const unlockAudio = () => {
+      if (this.isUnlocked) return;
+      
+      const context = this.initAudioContext();
+      if (!context) return;
+
+      // Resume audio context if suspended (common on mobile)
+      if (context.state === 'suspended') {
+        context.resume().then(() => {
+          console.log('Audio context resumed');
+          this.isUnlocked = true;
+          // Play a silent sound to unlock audio on iOS
+          this.playSilent();
+        }).catch(err => {
+          console.error('Failed to resume audio context:', err);
+        });
+      } else {
+        this.isUnlocked = true;
+        // Play a silent sound to unlock audio on iOS
+        this.playSilent();
+      }
+    };
+
+    // Listen for various user interaction events
+    const events = ['touchstart', 'touchend', 'mousedown', 'keydown', 'click'];
+    events.forEach(event => {
+      document.addEventListener(event, unlockAudio, { once: true, passive: true });
+    });
+  }
+
+  // Play silent sound to unlock audio on iOS
+  playSilent() {
+    const context = this.audioContext;
+    if (!context) return;
+
+    const oscillator = context.createOscillator();
+    const gainNode = context.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(context.destination);
+    
+    gainNode.gain.setValueAtTime(0.0001, context.currentTime); // Nearly silent
+    oscillator.frequency.setValueAtTime(440, context.currentTime);
+    
+    oscillator.start(context.currentTime);
+    oscillator.stop(context.currentTime + 0.01);
   }
 
   // Initialize audio context (must be done after user interaction)
@@ -21,12 +74,30 @@ class NotificationSound {
     return this.audioContext;
   }
 
+  // Resume audio context if suspended (important for mobile)
+  async ensureAudioContext() {
+    const context = this.initAudioContext();
+    if (!context) return null;
+
+    if (context.state === 'suspended') {
+      try {
+        await context.resume();
+      } catch (err) {
+        console.error('Failed to resume audio context:', err);
+      }
+    }
+    return context;
+  }
+
   // Play a pleasant notification sound (two-tone chime)
-  playNotification() {
+  async playNotification() {
     if (!this.isEnabled) return;
 
-    const context = this.initAudioContext();
-    if (!context) return;
+    const context = await this.ensureAudioContext();
+    if (!context || context.state !== 'running') {
+      console.warn('Audio context not ready. User interaction may be required.');
+      return;
+    }
 
     const now = context.currentTime;
 
@@ -70,11 +141,14 @@ class NotificationSound {
   }
 
   // Play alert sound for urgent notifications (three beeps)
-  playAlert() {
+  async playAlert() {
     if (!this.isEnabled) return;
 
-    const context = this.initAudioContext();
-    if (!context) return;
+    const context = await this.ensureAudioContext();
+    if (!context || context.state !== 'running') {
+      console.warn('Audio context not ready. User interaction may be required.');
+      return;
+    }
 
     const now = context.currentTime;
     const beepFrequency = 880; // A5 note
@@ -102,11 +176,14 @@ class NotificationSound {
   }
 
   // Play order notification (pleasant ascending notes)
-  playOrderNotification() {
+  async playOrderNotification() {
     if (!this.isEnabled) return;
 
-    const context = this.initAudioContext();
-    if (!context) return;
+    const context = await this.ensureAudioContext();
+    if (!context || context.state !== 'running') {
+      console.warn('Audio context not ready. User interaction may be required.');
+      return;
+    }
 
     const now = context.currentTime;
     // C major chord progression
@@ -133,17 +210,106 @@ class NotificationSound {
     });
   }
 
+  // Vibrate device (mobile support)
+  vibrate(pattern = [200, 100, 200]) {
+    if ('vibrate' in navigator) {
+      try {
+        navigator.vibrate(pattern);
+        return true;
+      } catch (err) {
+        console.error('Vibration failed:', err);
+        return false;
+      }
+    }
+    return false;
+  }
+
+  // Show browser notification (requires permission)
+  async showNotification(title, options = {}) {
+    // Check if notifications are supported
+    if (!('Notification' in window)) {
+      console.warn('Browser notifications not supported');
+      return false;
+    }
+
+    // Request permission if not granted
+    if (Notification.permission === 'default') {
+      try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.warn('Notification permission denied');
+          return false;
+        }
+      } catch (err) {
+        console.error('Failed to request notification permission:', err);
+        return false;
+      }
+    }
+
+    // Show notification if permission granted
+    if (Notification.permission === 'granted') {
+      try {
+        const notification = new Notification(title, {
+          icon: '/favicon.svg',
+          badge: '/favicon.svg',
+          vibrate: [200, 100, 200],
+          requireInteraction: true, // Keep notification until user interacts
+          tag: 'order-notification', // Prevent duplicate notifications
+          renotify: true, // Alert again even if notification exists
+          ...options
+        });
+
+        // Play sound when notification is shown
+        notification.onclick = () => {
+          window.focus();
+          notification.close();
+        };
+
+        return true;
+      } catch (err) {
+        console.error('Failed to show notification:', err);
+        return false;
+      }
+    }
+
+    return false;
+  }
+
   // Start looping the order notification sound until stopped
-  startLoop() {
+  async startLoop() {
     if (this.isLooping) return; // Already looping
     
     this.isLooping = true;
-    this.playOrderNotification();
+    
+    // Try to play sound
+    await this.playOrderNotification();
+    
+    // Vibrate on mobile
+    this.vibrate([200, 100, 200, 100, 200]);
+    
+    // Show browser notification
+    await this.showNotification('New Order Received!', {
+      body: 'You have a new order. Tap to view details.',
+      icon: '/favicon.svg',
+      tag: 'new-order'
+    });
     
     // Play again every 5 seconds
-    this.loopInterval = setInterval(() => {
+    this.loopInterval = setInterval(async () => {
       if (this.isLooping) {
-        this.playOrderNotification();
+        // Check if page is visible
+        if (!document.hidden) {
+          // Page is visible - play sound
+          await this.playOrderNotification();
+        } else {
+          // Page is hidden - use vibration and notification
+          this.vibrate([200, 100, 200]);
+          await this.showNotification('Order Notification', {
+            body: 'You still have pending orders to review.',
+            tag: 'order-reminder',
+            requireInteraction: false
+          });
+        }
       }
     }, 5000);
   }
@@ -155,6 +321,44 @@ class NotificationSound {
       clearInterval(this.loopInterval);
       this.loopInterval = null;
     }
+    
+    // Stop vibration
+    if ('vibrate' in navigator) {
+      navigator.vibrate(0);
+    }
+  }
+
+  // Request notification permission
+  async requestNotificationPermission() {
+    if (!('Notification' in window)) {
+      return 'unsupported';
+    }
+
+    if (Notification.permission === 'granted') {
+      return 'granted';
+    }
+
+    if (Notification.permission === 'denied') {
+      return 'denied';
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      return permission;
+    } catch (err) {
+      console.error('Failed to request notification permission:', err);
+      return 'denied';
+    }
+  }
+
+  // Check if notifications are available
+  notificationsAvailable() {
+    return 'Notification' in window && Notification.permission === 'granted';
+  }
+
+  // Check if vibration is available
+  vibrationAvailable() {
+    return 'vibrate' in navigator;
   }
 
   // Enable/disable sounds
