@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ref, onValue, update } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
@@ -276,14 +277,15 @@ const NotificationsPage = () => {
                     )}
                   </div>
 
-                  {/* Link */}
+                  {/* Link - Navigate to My Orders for customers */}
                   {notification.metadata?.orderLink && (
-                    <a
-                      href={notification.metadata.orderLink}
+                    <Link
+                      to={role === 'customer' ? '/customer/orders' : notification.metadata.orderLink}
                       className="inline-flex items-center text-orange-600 hover:text-orange-700 font-medium text-sm mt-2"
+                      onClick={() => handleMarkAsRead(notification.id, notification.source)}
                     >
                       View Order →
-                    </a>
+                    </Link>
                   )}
                 </div>
               </div>
