@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useCartStore } from '../store/cartStore';
+import { useWishlistStore } from '../store/wishlistStore';
 import { ref, onValue } from 'firebase/database';
 import { database, auth } from '../config/firebase';
 import { signOut } from 'firebase/auth';
@@ -13,7 +14,8 @@ import {
   LogOut,
   LayoutDashboard,
   Search,
-  Bell
+  Bell,
+  Heart
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -24,6 +26,7 @@ const Navbar = () => {
   const [categories, setCategories] = useState([]);
   const { user, role, logout } = useAuthStore();
   const { getItemCount } = useCartStore();
+  const { getWishlistCount } = useWishlistStore();
   const navigate = useNavigate();
 
   // Fetch categories from Firebase
@@ -128,16 +131,16 @@ const Navbar = () => {
           </div>
 
           {/* Right Side Icons */}
-          <div className="flex items-center space-x-4">
-            {/* Search Icon */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Search Icon - Hidden on mobile */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2 text-gray-700 hover:text-primary-600 transition"
+              className="hidden sm:block p-2 text-gray-700 hover:text-primary-600 transition"
             >
               <Search className="w-5 h-5" />
             </button>
 
-            {/* Notifications Bell */}
+            {/* Notifications Bell - Always visible for logged in users */}
             {user && (
               <Link
                 to="/notifications"
@@ -152,7 +155,20 @@ const Navbar = () => {
               </Link>
             )}
 
-            {/* Cart */}
+            {/* Wishlist - Always visible */}
+            <Link
+              to="/wishlist"
+              className="relative p-2 text-gray-700 hover:text-primary-600 transition"
+            >
+              <Heart className="w-5 h-5" />
+              {getWishlistCount() > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  {getWishlistCount()}
+                </span>
+              )}
+            </Link>
+
+            {/* Cart - Always visible */}
             <Link
               to="/cart"
               className="relative p-2 text-gray-700 hover:text-primary-600 transition"
@@ -165,9 +181,9 @@ const Navbar = () => {
               )}
             </Link>
 
-            {/* User Menu */}
+            {/* User Menu - Desktop only */}
             {user ? (
-              <div className="relative group">
+              <div className="hidden sm:block relative group">
                 <button className="flex items-center space-x-2 p-2 text-gray-700 hover:text-primary-600 transition">
                   <User className="w-5 h-5" />
                 </button>
@@ -227,6 +243,60 @@ const Navbar = () => {
         {/* Mobile Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t animate-slide-in">
+            {/* Search in Mobile Menu */}
+            <div className="mb-4 sm:hidden">
+              <input
+                type="text"
+                placeholder="Search products..."
+                className="w-full input-field"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    navigate(`/products?search=${e.target.value}`);
+                    setMobileMenuOpen(false);
+                  }
+                }}
+              />
+            </div>
+
+            {/* User Section for Mobile */}
+            {user && (
+              <div className="mb-4 pb-4 border-b sm:hidden">
+                <Link
+                  to={getDashboardLink()}
+                  className="flex items-center space-x-2 py-2 text-gray-700 hover:text-primary-600"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link
+                  to="/notifications"
+                  className="flex items-center justify-between py-2 text-gray-700 hover:text-primary-600"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div className="flex items-center space-x-2">
+                    <Bell className="w-5 h-5" />
+                    <span>Notifications</span>
+                  </div>
+                  {unreadCount > 0 && (
+                    <span className="bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Link>
+                <button
+                  onClick={() => {
+                    handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="flex items-center space-x-2 w-full py-2 text-gray-700 hover:text-primary-600"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
+
             <Link
               to="/"
               className="block py-2 text-gray-700 hover:text-primary-600"

@@ -4,6 +4,7 @@ import { ref, onValue, push, set } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useCartStore } from '../store/cartStore';
 import { useAuthStore } from '../store/authStore';
+import { useWishlistStore } from '../store/wishlistStore';
 import { ShoppingCart, Star, Heart, Share2, ArrowLeft, Minus, Plus } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -12,6 +13,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { addItem } = useCartStore();
+  const { toggleWishlist, isInWishlist } = useWishlistStore();
   
   const [product, setProduct] = useState(null);
   const [categories, setCategories] = useState([]);
@@ -117,9 +119,47 @@ const ProductDetailPage = () => {
       setReviewText('');
       setRating(5);
       toast.success('Review submitted!');
-    } catch (error) {
+    } catch {
       toast.error('Failed to submit review');
     }
+  };
+
+  // Handle share functionality
+  const handleShare = async () => {
+    const shareData = {
+      title: product.name,
+      text: `Check out ${product.name} - ${product.salePrice ? `GH₵${product.salePrice}` : `GH₵${product.price}`}`,
+      url: window.location.href,
+    };
+
+    try {
+      // Check if Web Share API is available
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast.success('Shared successfully!');
+      } else {
+        // Fallback: Copy link to clipboard
+        await navigator.clipboard.writeText(window.location.href);
+        toast.success('Link copied to clipboard!');
+      }
+    } catch (err) {
+      // User cancelled or error occurred
+      if (err.name !== 'AbortError') {
+        // Try clipboard as fallback
+        try {
+          await navigator.clipboard.writeText(window.location.href);
+          toast.success('Link copied to clipboard!');
+        } catch {
+          toast.error('Failed to share');
+        }
+      }
+    }
+  };
+
+  // Handle wishlist toggle
+  const handleWishlistToggle = () => {
+    if (!product) return;
+    toggleWishlist(product);
   };
 
   const averageRating = reviews.length > 0
@@ -205,13 +245,23 @@ const ProductDetailPage = () => {
               
               {/* Share & Wishlist Buttons - Jumia Style */}
               <div className="flex gap-2 mt-3">
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded text-sm hover:border-orange-500 transition">
+                <button 
+                  onClick={handleShare}
+                  className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded text-sm hover:border-orange-500 hover:bg-orange-50 transition"
+                >
                   <Share2 className="w-4 h-4" />
                   SHARE
                 </button>
-                <button className="flex-1 flex items-center justify-center gap-2 py-2 border border-gray-300 rounded text-sm hover:border-orange-500 transition">
-                  <Heart className="w-4 h-4" />
-                  WISHLIST
+                <button 
+                  onClick={handleWishlistToggle}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2 border rounded text-sm transition ${
+                    isInWishlist(id)
+                      ? 'border-red-500 bg-red-50 text-red-600'
+                      : 'border-gray-300 hover:border-orange-500 hover:bg-orange-50'
+                  }`}
+                >
+                  <Heart className={`w-4 h-4 ${isInWishlist(id) ? 'fill-red-500' : ''}`} />
+                  {isInWishlist(id) ? 'IN WISHLIST' : 'WISHLIST'}
                 </button>
               </div>
             </div>
