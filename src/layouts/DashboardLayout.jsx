@@ -95,9 +95,9 @@ const DashboardLayout = () => {
     return () => unsubscribe();
   }, [role, user, products]);
 
-  // Fetch notifications for admin and agent
+  // Fetch notifications for all users (admin, agent, customer)
   useEffect(() => {
-    if (!user?.uid || (role !== 'admin' && role !== 'agent')) {
+    if (!user?.uid) {
       setNotifications([]);
       setUnreadCount(0);
       return;
@@ -277,20 +277,19 @@ const DashboardLayout = () => {
             </button>
             
             <div className="flex items-center space-x-4 ml-auto">
-              {/* Notification Bell - Only for admin and agent */}
-              {(role === 'admin' || role === 'agent') && (
-                <div className="relative">
-                  <button
-                    onClick={() => setNotificationOpen(!notificationOpen)}
-                    className="relative p-2 text-gray-700 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition"
-                  >
-                    <Bell className="w-5 h-5" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse font-semibold">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
+              {/* Notification Bell - For all users */}
+              <div className="relative">
+                <button
+                  onClick={() => setNotificationOpen(!notificationOpen)}
+                  className="relative p-2 text-gray-700 hover:text-primary-600 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center animate-pulse font-semibold">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
 
                   {/* Notification Dropdown - Mobile Responsive */}
                   {notificationOpen && (
@@ -363,7 +362,6 @@ const DashboardLayout = () => {
                     </>
                   )}
                 </div>
-              )}
 
               <div className="text-right">
                 <p className="text-sm font-medium text-gray-900">

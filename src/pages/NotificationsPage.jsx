@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { ref, onValue, update } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
+import useNotificationStore from '../store/notificationStore';
 import { Bell, CheckCircle, AlertCircle, Info, Megaphone, X, Check, Trash2, Filter } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 const NotificationsPage = () => {
   const { user, role } = useAuthStore();
+  const { updateNotificationCount } = useNotificationStore();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, unread, read
@@ -62,6 +64,12 @@ const NotificationsPage = () => {
         // Sort by createdAt descending
         allNotifs.sort((a, b) => b.createdAt - a.createdAt);
         setNotifications(allNotifs);
+        
+        // Update notification count in store (for potential browser notifications)
+        const unreadCount = allNotifs.filter(n => !n.read && n.source === 'user').length;
+        const latestUnread = allNotifs.find(n => !n.read && n.source === 'user');
+        updateNotificationCount(unreadCount, latestUnread);
+        
         setLoading(false);
       });
 
@@ -69,7 +77,7 @@ const NotificationsPage = () => {
     });
 
     return () => unsubscribeUser();
-  }, [user, role]);
+  }, [user, role, updateNotificationCount]);
 
   const handleMarkAsRead = async (notificationId, source) => {
     if (source === 'announcement') return; // Can't mark announcements as read

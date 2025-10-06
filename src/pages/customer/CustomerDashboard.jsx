@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
+import useNotificationStore from '../../store/notificationStore';
 import { markOrderNotificationsAsRead } from '../../utils/notificationHelpers';
 import { 
   ShoppingBag, 
@@ -12,15 +13,48 @@ import {
   Truck,
   Eye,
   Calendar,
-  DollarSign
+  DollarSign,
+  Bell
 } from 'lucide-react';
+import { toast } from 'react-hot-toast';
 
 const CustomerDashboard = () => {
   const { user } = useAuthStore();
+  const { 
+    showOrderNotification, 
+    requestNotificationPermission,
+    areNotificationsEnabled 
+  } = useNotificationStore();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [showOrderModal, setShowOrderModal] = useState(false);
+  const [previousOrders, setPreviousOrders] = useState({});
+  const [showNotificationPrompt, setShowNotificationPrompt] = useState(false);
+
+  // Check if notifications are enabled and show prompt if not
+  useEffect(() => {
+    // Wait 3 seconds before showing notification prompt
+    const timer = setTimeout(() => {
+      if (!areNotificationsEnabled()) {
+        setShowNotificationPrompt(true);
+      }
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [areNotificationsEnabled]);
+
+  // Handle enabling notifications
+  const handleEnableNotifications = async () => {
+    const granted = await requestNotificationPermission();
+    if (granted) {
+      toast.success('🔔 Notifications enabled! You\'ll be notified of order updates.');
+      setShowNotificationPrompt(false);
+    } else {
+      toast.error('❌ Notification permission denied. You can enable it in browser settings.');
+      setShowNotificationPrompt(false);
+    }
+  };
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -34,7 +68,24 @@ const CustomerDashboard = () => {
           .map((key) => ({ id: key, ...data[key] }))
           .filter((order) => order.customerId === user.uid)
           .sort((a, b) => b.createdAt - a.createdAt);
+        
+        // Check for order status changes and show notifications
+        customerOrders.forEach(order => {
+          const previousOrder = previousOrders[order.id];
+          if (previousOrder && previousOrder.status !== order.status) {
+            // Status changed - show browser notification
+            showOrderNotification(order);
+          }
+        });
+
+        // Update state
         setOrders(customerOrders);
+        setPreviousOrders(
+          customerOrders.reduce((acc, order) => {
+            acc[order.id] = order;
+            return acc;
+          }, {})
+        );
       } else {
         setOrders([]);
       }
@@ -42,7 +93,7 @@ const CustomerDashboard = () => {
     });
 
     return () => unsubscribe();
-  }, [user]);
+  }, [user, previousOrders, showOrderNotification]);
 
   const stats = {
     totalOrders: orders.length,
@@ -101,6 +152,39 @@ const CustomerDashboard = () => {
 
   return (
     <div className="space-y-8 pb-8">
+      {/* Notification Permission Prompt */}
+      {showNotificationPrompt && (
+        <div className="card bg-gradient-to-r from-primary-50 to-orange-50 border-l-4 border-primary-500">
+          <div className="flex items-start sm:items-center justify-between gap-4 flex-col sm:flex-row">
+            <div className="flex items-start gap-3 flex-1">
+              <Bell className="w-6 h-6 text-primary-600 flex-shrink-0 mt-1 sm:mt-0 animate-bounce" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1">
+                  📬 Stay Updated on Your Orders!
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-700">
+                  Enable notifications to get instant alerts when your order status changes, even when you're away from this page.
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleEnableNotifications}
+                className="flex-1 sm:flex-none px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition text-sm font-medium"
+              >
+                Enable Notifications
+              </button>
+              <button
+                onClick={() => setShowNotificationPrompt(false)}
+                className="flex-1 sm:flex-none px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition text-sm font-medium"
+              >
+                Maybe Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">🛍️ My Orders Dashboard</h1>
