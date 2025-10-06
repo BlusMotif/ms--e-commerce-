@@ -4,6 +4,7 @@ import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getDatabase } from 'firebase/database';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { getMessaging, isSupported } from 'firebase/messaging';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,5 +25,18 @@ export const database = getDatabase(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
 export const googleProvider = new GoogleAuthProvider();
+
+// Initialize Firebase Cloud Messaging (only if supported)
+let messaging = null;
+if (typeof window !== 'undefined') {
+  isSupported().then(supported => {
+    if (supported) {
+      messaging = getMessaging(app);
+    }
+  }).catch(() => {
+    console.log('Firebase Messaging not supported in this browser');
+  });
+}
+export { messaging };
 
 export default app;

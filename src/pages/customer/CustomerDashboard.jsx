@@ -3,6 +3,7 @@ import { ref, onValue } from 'firebase/database';
 import { database } from '../../config/firebase';
 import { useAuthStore } from '../../store/authStore';
 import useNotificationStore from '../../store/notificationStore';
+import fcmService from '../../utils/fcmNotifications';
 import { markOrderNotificationsAsRead } from '../../utils/notificationHelpers';
 import { 
   ShoppingBag, 
@@ -44,15 +45,31 @@ const CustomerDashboard = () => {
     return () => clearTimeout(timer);
   }, [areNotificationsEnabled]);
 
-  // Handle enabling notifications
+  // Handle enabling notifications with FCM support
   const handleEnableNotifications = async () => {
-    const granted = await requestNotificationPermission();
-    if (granted) {
-      toast.success('🔔 Notifications enabled! You\'ll be notified of order updates.');
-      setShowNotificationPrompt(false);
-    } else {
-      toast.error('❌ Notification permission denied. You can enable it in browser settings.');
-      setShowNotificationPrompt(false);
+    try {
+      // Try FCM first (works even when screen is off/background)
+      if (fcmService.isSupported()) {
+        const token = await fcmService.requestPermissionAndGetToken(user?.uid);
+        if (token) {
+          toast.success('🔔 Push notifications enabled! You\'ll receive alerts even when the app is closed.');
+          setShowNotificationPrompt(false);
+          return;
+        }
+      }
+      
+      // Fallback to browser notifications
+      const granted = await requestNotificationPermission();
+      if (granted) {
+        toast.success('🔔 Notifications enabled! You\'ll be notified of order updates.');
+        setShowNotificationPrompt(false);
+      } else {
+        toast.error('❌ Notification permission denied. You can enable it in browser settings.');
+        setShowNotificationPrompt(false);
+      }
+    } catch (error) {
+      console.error('Error enabling notifications:', error);
+      toast.error('Failed to enable notifications. Please try again.');
     }
   };
 

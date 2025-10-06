@@ -155,6 +155,7 @@ const DashboardLayout = () => {
         { path: '/', label: 'Home', icon: Home },
         { path: '/customer', label: 'Dashboard', icon: LayoutDashboard },
         { path: '/customer/orders', label: 'My Orders', icon: ShoppingCart },
+        { path: '/notifications', label: 'Notifications', icon: Bell },
         { path: '/customer/profile', label: 'Profile', icon: User },
       ];
     }
@@ -225,8 +226,10 @@ const DashboardLayout = () => {
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = location.pathname === item.path;
-            const isOrdersPage = item.label === 'Orders';
-            const showBadge = isOrdersPage && pendingOrdersCount > 0;
+            const isOrdersPage = item.label === 'Orders' || item.label === 'My Orders';
+            const isNotificationsPage = item.label === 'Notifications';
+            const showOrdersBadge = isOrdersPage && pendingOrdersCount > 0;
+            const showNotificationsBadge = isNotificationsPage && unreadCount > 0;
             
             return (
               <Link
@@ -243,9 +246,14 @@ const DashboardLayout = () => {
                   <Icon className="w-5 h-5" />
                   <span className="font-medium">{item.label}</span>
                 </div>
-                {showBadge && (
+                {showOrdersBadge && (
                   <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
                     {pendingOrdersCount}
+                  </span>
+                )}
+                {showNotificationsBadge && (
+                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full animate-pulse">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
               </Link>
