@@ -199,7 +199,7 @@ const DashboardLayout = () => {
         } fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col`}
       >
         <div className="flex items-center justify-between h-16 px-6 border-b flex-shrink-0">
-          <Link to="/" className="flex items-center space-x-2 group">
+          <Link to="/" className="flex items-center space-x-2 group" onClick={() => setSidebarOpen(false)}>
             <div className="relative">
               <div className="w-9 h-9 bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
                 <span className="text-white font-bold text-base">MS</span>
@@ -232,6 +232,7 @@ const DashboardLayout = () => {
               <Link
                 key={item.path}
                 to={item.path}
+                onClick={() => setSidebarOpen(false)}
                 className={`flex items-center justify-between space-x-3 px-4 py-3 rounded-lg transition-colors ${
                   isActive
                     ? 'bg-primary-50 text-primary-600'

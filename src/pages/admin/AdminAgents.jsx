@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, remove, set } from 'firebase/database';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { database, auth, functions } from '../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
@@ -195,18 +195,45 @@ const AdminAgents = () => {
     setResettingPassword(true);
 
     try {
-      console.log('Calling resetAgentPassword function for agent:', selectedAgent.uid);
+      console.log('Attempting to reset password for agent:', selectedAgent.uid);
       
-      // Call the Cloud Function to reset the password
-      const resetPasswordFunction = httpsCallable(functions, 'resetAgentPassword');
-      const result = await resetPasswordFunction({
-        agentUid: selectedAgent.uid,
-        newPassword: newAgentPassword
-      });
+      // Try Cloud Function first (if deployed)
+      try {
+        const resetPasswordFunction = httpsCallable(functions, 'resetAgentPassword');
+        const result = await resetPasswordFunction({
+          agentUid: selectedAgent.uid,
+          newPassword: newAgentPassword
+        });
 
-      console.log('Password reset result:', result);
-      
-      toast.success(result.data.message || `Password reset successfully for ${selectedAgent.fullName}`);
+        console.log('Password reset result:', result);
+        toast.success(result.data.message || `Password reset successfully for ${selectedAgent.fullName}`);
+        
+        setShowPasswordModal(false);
+        setSelectedAgent(null);
+        setNewAgentPassword('');
+        return;
+      } catch (cloudFunctionError) {
+        console.log('Cloud Function not available, using fallback method');
+        console.error('Cloud Function error:', cloudFunctionError);
+        
+        // Fallback: Send password reset email
+        if (selectedAgent.email) {
+          await sendPasswordResetEmail(auth, selectedAgent.email);
+          toast.success(`Password reset email sent to ${selectedAgent.email}`);
+          toast.info('Agent will receive an email to reset their password');
+          
+          // Update database to log the reset request
+          const agentRef = ref(database, `users/${selectedAgent.uid}`);
+          await update(agentRef, {
+            passwordResetRequested: true,
+            passwordResetRequestedAt: Date.now(),
+            passwordResetRequestedBy: auth.currentUser.uid,
+            updatedAt: Date.now(),
+          });
+        } else {
+          throw new Error('Agent email not available for password reset');
+        }
+      }
       
       setShowPasswordModal(false);
       setSelectedAgent(null);
@@ -222,6 +249,10 @@ const AdminAgents = () => {
         toast.error('You do not have permission to reset passwords');
       } else if (error.code === 'functions/invalid-argument') {
         toast.error(error.message);
+      } else if (error.code === 'auth/invalid-email') {
+        toast.error('Invalid email address');
+      } else if (error.code === 'auth/user-not-found') {
+        toast.error('Agent account not found');
       } else {
         toast.error(`Failed to reset password: ${error.message || 'Please try again'}`);
       }
@@ -658,9 +689,9 @@ const AdminAgents = () => {
                 </p>
               </div>
 
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm text-yellow-800">
-                  ⚠️ <strong>Note:</strong> This sets a temporary password. The agent will be prompted to change it on their next login.
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Password Reset:</strong> If Cloud Functions are not available, a password reset email will be sent to the agent's email address instead.
                 </p>
               </div>
 
