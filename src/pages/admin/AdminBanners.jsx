@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, X, Save, Image as ImageIcon, ArrowUp, ArrowDown } f
 const AdminBanners = () => {
   const [banners, setBanners] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [settings, setSettings] = useState({ maxUploadSizeMB: 2 }); // Default 2MB
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
@@ -55,9 +56,18 @@ const AdminBanners = () => {
       }
     });
 
+    // Fetch settings
+    const settingsRef = ref(database, 'settings');
+    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.val());
+      }
+    });
+
     return () => {
       unsubscribe();
       unsubscribeCategories();
+      unsubscribeSettings();
     };
   }, []);
 
@@ -72,9 +82,10 @@ const AdminBanners = () => {
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (max 1MB for base64 storage)
-      if (file.size > 1024 * 1024) {
-        toast.error('Image size should be less than 1MB');
+      // Check file size using dynamic limit from settings
+      const maxSizeBytes = (settings.maxUploadSizeMB || 2) * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        toast.error(`Image size should be less than ${settings.maxUploadSizeMB || 2}MB`);
         return;
       }
       

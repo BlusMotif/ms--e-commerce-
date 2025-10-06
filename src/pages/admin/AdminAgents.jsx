@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, remove, set } from 'firebase/database';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { database, auth } from '../../config/firebase';
+import { database, auth, functions } from '../../config/firebase';
+import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
 import { Users, CheckCircle, XCircle, Ban, UserCheck, Search, Mail, Phone, Calendar, Package, DollarSign, Plus, X, Save, Key } from 'lucide-react';
 
@@ -194,27 +195,36 @@ const AdminAgents = () => {
     setResettingPassword(true);
 
     try {
-      // Note: Firebase Auth doesn't allow direct password updates for other users from client
-      // In production, use Firebase Admin SDK or Cloud Functions for real password reset
-      // This stores a temporary password that the agent will be prompted to change on next login
+      console.log('Calling resetAgentPassword function for agent:', selectedAgent.uid);
       
-      const agentRef = ref(database, `users/${selectedAgent.uid}`);
-      await update(agentRef, {
-        passwordResetRequired: true,
-        temporaryPassword: newAgentPassword,
-        passwordResetAt: Date.now(),
-        updatedAt: Date.now(),
+      // Call the Cloud Function to reset the password
+      const resetPasswordFunction = httpsCallable(functions, 'resetAgentPassword');
+      const result = await resetPasswordFunction({
+        agentUid: selectedAgent.uid,
+        newPassword: newAgentPassword
       });
 
-      toast.success(`Password reset initiated for ${selectedAgent.fullName}. Agent will be prompted to change password on next login.`);
-      toast.info('Temporary password has been set in the system.');
+      console.log('Password reset result:', result);
+      
+      toast.success(result.data.message || `Password reset successfully for ${selectedAgent.fullName}`);
       
       setShowPasswordModal(false);
       setSelectedAgent(null);
       setNewAgentPassword('');
     } catch (error) {
       console.error('Error resetting password:', error);
-      toast.error('Failed to reset password. Please try again.');
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
+      
+      if (error.code === 'functions/unauthenticated') {
+        toast.error('You must be logged in to reset passwords');
+      } else if (error.code === 'functions/permission-denied') {
+        toast.error('You do not have permission to reset passwords');
+      } else if (error.code === 'functions/invalid-argument') {
+        toast.error(error.message);
+      } else {
+        toast.error(`Failed to reset password: ${error.message || 'Please try again'}`);
+      }
     } finally {
       setResettingPassword(false);
     }

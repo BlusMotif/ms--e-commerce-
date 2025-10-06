@@ -6,6 +6,7 @@ import { Plus, Edit, Trash2, X, Save, Tag, Upload, Image as ImageIcon } from 'lu
 
 const AdminCategories = () => {
   const [categories, setCategories] = useState([]);
+  const [settings, setSettings] = useState({ maxUploadSizeMB: 2 }); // Default 2MB
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -33,7 +34,18 @@ const AdminCategories = () => {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    // Fetch settings
+    const settingsRef = ref(database, 'settings');
+    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.val());
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      unsubscribeSettings();
+    };
   }, []);
 
   const handleInputChange = (e) => {
@@ -49,9 +61,10 @@ const AdminCategories = () => {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Check file size (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        toast.error('Image size should be less than 2MB');
+      // Check file size using dynamic limit from settings
+      const maxSizeBytes = (settings.maxUploadSizeMB || 2) * 1024 * 1024;
+      if (file.size > maxSizeBytes) {
+        toast.error(`Image size should be less than ${settings.maxUploadSizeMB || 2}MB`);
         return;
       }
 

@@ -19,6 +19,7 @@ const AdminSettings = () => {
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
+    maxUploadSizeMB: 2, // Maximum upload size in MB
   });
 
   // Password change state
@@ -63,6 +64,7 @@ const AdminSettings = () => {
       await set(settingsRef, {
         ...settings,
         deliveryFee: parseFloat(settings.deliveryFee),
+        maxUploadSizeMB: parseFloat(settings.maxUploadSizeMB),
         updatedAt: Date.now(),
       });
       toast.success('Settings saved successfully!');
@@ -103,8 +105,11 @@ const AdminSettings = () => {
       
       if (!user || !user.email) {
         toast.error('No user is currently signed in');
+        setPasswordLoading(false);
         return;
       }
+
+      console.log('Attempting to change password for user:', user.email);
 
       // Re-authenticate user with current password
       const credential = EmailAuthProvider.credential(
@@ -112,10 +117,14 @@ const AdminSettings = () => {
         passwordData.currentPassword
       );
 
+      console.log('Re-authenticating user...');
       await reauthenticateWithCredential(user, credential);
+      console.log('Re-authentication successful');
 
       // Update password
+      console.log('Updating password...');
       await updatePassword(user, passwordData.newPassword);
+      console.log('Password updated successfully');
 
       toast.success('Password changed successfully!');
       
@@ -127,15 +136,19 @@ const AdminSettings = () => {
       });
     } catch (error) {
       console.error('Error changing password:', error);
+      console.error('Error code:', error.code);
+      console.error('Error message:', error.message);
       
       if (error.code === 'auth/wrong-password') {
+        toast.error('Current password is incorrect');
+      } else if (error.code === 'auth/invalid-credential') {
         toast.error('Current password is incorrect');
       } else if (error.code === 'auth/weak-password') {
         toast.error('Password is too weak. Please choose a stronger password');
       } else if (error.code === 'auth/requires-recent-login') {
         toast.error('Please log out and log in again before changing your password');
       } else {
-        toast.error('Failed to change password. Please try again');
+        toast.error(`Failed to change password: ${error.message}`);
       }
     } finally {
       setPasswordLoading(false);
@@ -259,6 +272,26 @@ const AdminSettings = () => {
               />
               <p className="text-xs text-gray-500 mt-1">
                 Comma-separated list of pickup locations (lowercase, no spaces)
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Maximum Upload Size (MB) *
+              </label>
+              <input
+                type="number"
+                name="maxUploadSizeMB"
+                value={settings.maxUploadSizeMB}
+                onChange={handleInputChange}
+                min="0.5"
+                max="10"
+                step="0.5"
+                className="input"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Maximum file size in MB for image uploads (recommended: 1-5 MB)
               </p>
             </div>
           </div>

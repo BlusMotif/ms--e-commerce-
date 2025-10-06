@@ -10,6 +10,7 @@ const AgentProducts = () => {
   const { user } = useAuthStore();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [settings, setSettings] = useState({ maxUploadSizeMB: 2 }); // Default 2MB
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -58,9 +59,18 @@ const AgentProducts = () => {
       }
     });
 
+    // Fetch settings
+    const settingsRef = ref(database, 'settings');
+    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.val());
+      }
+    });
+
     return () => {
       unsubscribeProducts();
       unsubscribeCategories();
+      unsubscribeSettings();
     };
   }, []);
 
@@ -83,10 +93,11 @@ const AgentProducts = () => {
       return;
     }
     
-    // Check file sizes
-    const oversizedFiles = files.filter(file => file.size > 500 * 1024); // 500KB limit
+    // Check file sizes using dynamic limit from settings
+    const maxSizeBytes = (settings.maxUploadSizeMB || 2) * 1024 * 1024;
+    const oversizedFiles = files.filter(file => file.size > maxSizeBytes);
     if (oversizedFiles.length > 0) {
-      toast.error('Each image should be less than 500KB');
+      toast.error(`Each image should be less than ${settings.maxUploadSizeMB || 2}MB`);
       return;
     }
     

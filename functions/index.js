@@ -196,3 +196,69 @@ exports.onOrderCreated = functions.database
     const orderId = context.params.orderId;
     await sendOrderNotification(orderId, 'order_placed');
   });
+
+// Reset Agent Password - Admin only
+exports.resetAgentPassword = functions.https.onCall(async (data, context) => {
+  // Check if the request is from an authenticated admin
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  // Check if the caller is an admin
+  const callerUid = context.auth.uid;
+  const callerSnapshot = await admin.database().ref(`users/${callerUid}`).once('value');
+  const callerData = callerSnapshot.val();
+
+  if (!callerData || callerData.role !== 'admin') {
+    throw new functions.https.HttpsError('permission-denied', 'Only admins can reset agent passwords');
+  }
+
+  const { agentUid, newPassword } = data;
+
+  if (!agentUid || !newPassword) {
+    throw new functions.https.HttpsError('invalid-argument', 'Agent UID and new password are required');
+  }
+
+  if (newPassword.length < 6) {
+    throw new functions.https.HttpsError('invalid-argument', 'Password must be at least 6 characters');
+  }
+
+  try {
+    // Verify the target user is an agent
+    const agentSnapshot = await admin.database().ref(`users/${agentUid}`).once('value');
+    const agentData = agentSnapshot.val();
+
+    if (!agentData || agentData.role !== 'agent') {
+      throw new functions.https.HttpsError('invalid-argument', 'Target user is not an agent');
+    }
+
+    // Update the password using Firebase Admin SDK
+    await admin.auth().updateUser(agentUid, {
+      password: newPassword
+    });
+
+    // Update the database to log the password reset
+    await admin.database().ref(`users/${agentUid}`).update({
+      passwordResetAt: Date.now(),
+      passwordResetBy: callerUid,
+      updatedAt: Date.now()
+    });
+
+    // Log the activity
+    await admin.database().ref('activityLogs').push({
+      type: 'password_reset',
+      performedBy: callerUid,
+      targetUser: agentUid,
+      timestamp: Date.now(),
+      details: `Admin reset password for agent ${agentData.fullName || agentData.email}`
+    });
+
+    return {
+      success: true,
+      message: `Password reset successfully for ${agentData.fullName || agentData.email}`
+    };
+  } catch (error) {
+    console.error('Error resetting password:', error);
+    throw new functions.https.HttpsError('internal', `Failed to reset password: ${error.message}`);
+  }
+});
