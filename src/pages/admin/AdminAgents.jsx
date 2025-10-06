@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, remove, set } from 'firebase/database';
-import { createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendPasswordResetEmail, signOut } from 'firebase/auth';
 import { database, auth, functions } from '../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { toast } from 'react-hot-toast';
@@ -155,7 +155,27 @@ const AdminAgents = () => {
     setCreating(true);
 
     try {
-      // Create user account with Firebase Auth
+      // Try to use Cloud Function first (recommended approach)
+      try {
+        const createAgentFunction = httpsCallable(functions, 'createAgent');
+        const result = await createAgentFunction({
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          phone: formData.phone || '',
+        });
+        
+        console.log('Agent created via Cloud Function:', result);
+        toast.success('Agent created successfully!');
+        resetForm();
+        setShowModal(false);
+        return;
+      } catch (cloudError) {
+        console.log('Cloud Function not available, using fallback method');
+        console.error('Cloud Function error:', cloudError);
+      }
+      
+      // Fallback: Create user account with Firebase Auth (this will log admin out temporarily)
       const userCredential = await createUserWithEmailAndPassword(
         auth,
         formData.email,
@@ -164,22 +184,33 @@ const AdminAgents = () => {
 
       const userId = userCredential.user.uid;
 
-      // Save agent data to database
+      // Save agent data to database with role 'agent'
       const userRef = ref(database, `users/${userId}`);
       await set(userRef, {
         uid: userId,
         email: formData.email,
         fullName: formData.fullName,
         phone: formData.phone || '',
-        role: 'agent',
+        role: 'agent', // Explicitly set as agent
         status: 'active',
         createdAt: Date.now(),
         updatedAt: Date.now(),
       });
 
-      toast.success('Agent created successfully!');
+      // Sign out the newly created agent and restore admin session
+      await signOut(auth);
+      
+      toast.success('Agent created successfully! Please refresh the page to continue.');
+      toast.info('Note: You may need to log in again due to Firebase limitations.');
+      
       resetForm();
       setShowModal(false);
+      
+      // Reload page after a short delay to restore admin session
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+      
     } catch (error) {
       console.error('Error creating agent:', error);
       
