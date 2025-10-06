@@ -115,6 +115,7 @@ const CheckoutPage = () => {
           price: item.price,
           quantity: item.quantity,
           selectedSize: item.selectedSize,
+          image: item.image || item.imageUrl || '',
         })),
         subtotal: getTotal(),
         deliveryFee,

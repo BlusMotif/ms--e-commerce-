@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, set } from 'firebase/database';
-import { database } from '../../config/firebase';
+import { database, auth } from '../../config/firebase';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
-import { Save, Store, MapPin, Phone, Mail, Globe } from 'lucide-react';
+import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck } from 'lucide-react';
 
 const AdminSettings = () => {
   const [loading, setLoading] = useState(false);
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const [settings, setSettings] = useState({
     storeName: 'MS Special',
     storeEmail: 'info@msspecial.com',
@@ -17,6 +19,13 @@ const AdminSettings = () => {
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
+  });
+
+  // Password change state
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
   });
 
   useEffect(() => {
@@ -55,6 +64,74 @@ const AdminSettings = () => {
       toast.error('Failed to save settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordInputChange = (e) => {
+    const { name, value } = e.target;
+    setPasswordData({
+      ...passwordData,
+      [name]: value,
+    });
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (passwordData.newPassword.length < 6) {
+      toast.error('New password must be at least 6 characters long');
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    setPasswordLoading(true);
+
+    try {
+      const user = auth.currentUser;
+      
+      if (!user || !user.email) {
+        toast.error('No user is currently signed in');
+        return;
+      }
+
+      // Re-authenticate user with current password
+      const credential = EmailAuthProvider.credential(
+        user.email,
+        passwordData.currentPassword
+      );
+
+      await reauthenticateWithCredential(user, credential);
+
+      // Update password
+      await updatePassword(user, passwordData.newPassword);
+
+      toast.success('Password changed successfully!');
+      
+      // Reset form
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: '',
+      });
+    } catch (error) {
+      console.error('Error changing password:', error);
+      
+      if (error.code === 'auth/wrong-password') {
+        toast.error('Current password is incorrect');
+      } else if (error.code === 'auth/weak-password') {
+        toast.error('Password is too weak. Please choose a stronger password');
+      } else if (error.code === 'auth/requires-recent-login') {
+        toast.error('Please log out and log in again before changing your password');
+      } else {
+        toast.error('Failed to change password. Please try again');
+      }
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -255,6 +332,86 @@ const AdminSettings = () => {
               />
             </div>
           </div>
+        </div>
+
+        {/* Password Change Section */}
+        <div className="card mb-6">
+          <h2 className="text-xl font-semibold mb-4 flex items-center">
+            <Lock className="w-5 h-5 mr-2 text-primary-600" />
+            Change Password
+          </h2>
+          
+          <form onSubmit={handleChangePassword}>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <Key className="w-4 h-4 inline mr-2" />
+                  Current Password *
+                </label>
+                <input
+                  type="password"
+                  name="currentPassword"
+                  value={passwordData.currentPassword}
+                  onChange={handlePasswordInputChange}
+                  className="input"
+                  placeholder="Enter your current password"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <ShieldCheck className="w-4 h-4 inline mr-2" />
+                    New Password *
+                  </label>
+                  <input
+                    type="password"
+                    name="newPassword"
+                    value={passwordData.newPassword}
+                    onChange={handlePasswordInputChange}
+                    className="input"
+                    placeholder="Enter new password"
+                    minLength="6"
+                    required
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Must be at least 6 characters
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <ShieldCheck className="w-4 h-4 inline mr-2" />
+                    Confirm New Password *
+                  </label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={passwordData.confirmPassword}
+                    onChange={handlePasswordInputChange}
+                    className="input"
+                    placeholder="Confirm new password"
+                    minLength="6"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={passwordLoading}
+                className="btn-primary flex items-center"
+              >
+                <Lock className="w-4 h-4 mr-2" />
+                {passwordLoading ? 'Changing Password...' : 'Change Password'}
+              </button>
+
+              <p className="text-sm text-gray-600">
+                ⚠️ You will remain logged in after changing your password
+              </p>
+            </div>
+          </form>
         </div>
 
         {/* Save Button */}

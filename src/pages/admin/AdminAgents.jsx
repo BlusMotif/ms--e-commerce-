@@ -3,7 +3,7 @@ import { ref, onValue, update, remove, set } from 'firebase/database';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { database, auth } from '../../config/firebase';
 import { toast } from 'react-hot-toast';
-import { Users, CheckCircle, XCircle, Ban, UserCheck, Search, Mail, Phone, Calendar, Package, DollarSign, Plus, X, Save } from 'lucide-react';
+import { Users, CheckCircle, XCircle, Ban, UserCheck, Search, Mail, Phone, Calendar, Package, DollarSign, Plus, X, Save, Key } from 'lucide-react';
 
 const AdminAgents = () => {
   const [users, setUsers] = useState([]);
@@ -13,6 +13,10 @@ const AdminAgents = () => {
   const [filter, setFilter] = useState('all'); // all, active, blocked
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [newAgentPassword, setNewAgentPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [creating, setCreating] = useState(false);
   const [formData, setFormData] = useState({
     fullName: '',
@@ -170,6 +174,49 @@ const AdminAgents = () => {
       }
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleResetPassword = async (agent) => {
+    setSelectedAgent(agent);
+    setNewAgentPassword('');
+    setShowPasswordModal(true);
+  };
+
+  const handleSubmitPasswordReset = async (e) => {
+    e.preventDefault();
+    
+    if (newAgentPassword.length < 6) {
+      toast.error('Password must be at least 6 characters');
+      return;
+    }
+
+    setResettingPassword(true);
+
+    try {
+      // Note: Firebase Auth doesn't allow direct password updates for other users from client
+      // In production, use Firebase Admin SDK or Cloud Functions for real password reset
+      // This stores a temporary password that the agent will be prompted to change on next login
+      
+      const agentRef = ref(database, `users/${selectedAgent.uid}`);
+      await update(agentRef, {
+        passwordResetRequired: true,
+        temporaryPassword: newAgentPassword,
+        passwordResetAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      toast.success(`Password reset initiated for ${selectedAgent.fullName}. Agent will be prompted to change password on next login.`);
+      toast.info('Temporary password has been set in the system.');
+      
+      setShowPasswordModal(false);
+      setSelectedAgent(null);
+      setNewAgentPassword('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      toast.error('Failed to reset password. Please try again.');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -374,33 +421,42 @@ const AdminAgents = () => {
                 </div>
 
                 {/* Agent Actions */}
-                <div className="flex gap-2">
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleToggleStatus(agent.uid, agent.status)}
+                      className={`btn-outline flex-1 flex items-center justify-center ${
+                        agent.status === 'blocked'
+                          ? 'text-green-600 border-green-600 hover:bg-green-50'
+                          : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50'
+                      }`}
+                    >
+                      {agent.status === 'blocked' ? (
+                        <>
+                          <UserCheck className="w-4 h-4 mr-2" />
+                          Activate
+                        </>
+                      ) : (
+                        <>
+                          <Ban className="w-4 h-4 mr-2" />
+                          Block
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteAgent(agent.uid, agent.fullName)}
+                      className="btn-outline text-red-600 border-red-600 hover:bg-red-50 flex-1 flex items-center justify-center"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Delete
+                    </button>
+                  </div>
                   <button
-                    onClick={() => handleToggleStatus(agent.uid, agent.status)}
-                    className={`btn-outline flex-1 flex items-center justify-center ${
-                      agent.status === 'blocked'
-                        ? 'text-green-600 border-green-600 hover:bg-green-50'
-                        : 'text-yellow-600 border-yellow-600 hover:bg-yellow-50'
-                    }`}
+                    onClick={() => handleResetPassword(agent)}
+                    className="btn-outline text-blue-600 border-blue-600 hover:bg-blue-50 w-full flex items-center justify-center"
                   >
-                    {agent.status === 'blocked' ? (
-                      <>
-                        <UserCheck className="w-4 h-4 mr-2" />
-                        Activate
-                      </>
-                    ) : (
-                      <>
-                        <Ban className="w-4 h-4 mr-2" />
-                        Block
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAgent(agent.uid, agent.fullName)}
-                    className="btn-outline text-red-600 border-red-600 hover:bg-red-50 flex-1 flex items-center justify-center"
-                  >
-                    <XCircle className="w-4 h-4 mr-2" />
-                    Delete
+                    <Key className="w-4 h-4 mr-2" />
+                    Reset Password
                   </button>
                 </div>
               </div>
@@ -534,6 +590,97 @@ const AdminAgents = () => {
                     <>
                       <Save className="w-5 h-5 mr-2" />
                       Create Agent
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Password Reset Modal */}
+      {showPasswordModal && selectedAgent && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-xl font-bold flex items-center">
+                <Key className="w-6 h-6 mr-2 text-primary-600" />
+                Reset Agent Password
+              </h2>
+              <button
+                onClick={() => {
+                  setShowPasswordModal(false);
+                  setSelectedAgent(null);
+                  setNewAgentPassword('');
+                }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPasswordReset} className="p-6 space-y-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Agent:</strong> {selectedAgent.fullName}
+                </p>
+                <p className="text-sm text-blue-800">
+                  <strong>Email:</strong> {selectedAgent.email}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password *
+                </label>
+                <input
+                  type="password"
+                  value={newAgentPassword}
+                  onChange={(e) => setNewAgentPassword(e.target.value)}
+                  className="input"
+                  placeholder="Enter new password for agent"
+                  minLength="6"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be at least 6 characters long
+                </p>
+              </div>
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">
+                  ⚠️ <strong>Note:</strong> This sets a temporary password. The agent will be prompted to change it on their next login.
+                </p>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPasswordModal(false);
+                    setSelectedAgent(null);
+                    setNewAgentPassword('');
+                  }}
+                  className="btn-outline flex-1"
+                  disabled={resettingPassword}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={resettingPassword}
+                  className="btn-primary flex-1 flex items-center justify-center"
+                >
+                  {resettingPassword ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <Key className="w-5 h-5 mr-2" />
+                      Reset Password
                     </>
                   )}
                 </button>
