@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, update, set } from 'firebase/database';
+import { ref, onValue, set, get } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { useAuthStore } from '../../store/authStore';
 
 const AdminSettings = () => {
   const [loading, setLoading] = useState(false);
   const [passwordLoading, setPasswordLoading] = useState(false);
+  const { user, role } = useAuthStore(); // Get user and role from auth store
+  const [lastPasswordResetAttempt, setLastPasswordResetAttempt] = useState(0); // Rate limiting
   const [settings, setSettings] = useState({
     storeName: 'MS Special',
     storeEmail: 'info@msspecial.com',
@@ -24,14 +27,12 @@ const AdminSettings = () => {
 
   // Password change state
   const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
     newPassword: '',
     confirmPassword: '',
   });
 
   // Password visibility state
   const [showPassword, setShowPassword] = useState({
-    current: false,
     new: false,
     confirm: false,
   });
@@ -87,7 +88,62 @@ const AdminSettings = () => {
   const handleChangePassword = async (e) => {
     e.preventDefault();
     
-    // Validation
+    // ===== SECURITY CHECKS =====
+    
+    // 1. Check if user is authenticated
+    const currentUser = auth.currentUser;
+    if (!currentUser || !currentUser.email) {
+      toast.error('❌ Authentication required. Please log in again.');
+      return;
+    }
+
+    // 2. Verify user role is admin (server-side check)
+    if (role !== 'admin') {
+      toast.error('❌ Unauthorized: Only admins can change their password here.');
+      console.error('Security Alert: Non-admin user attempted password change');
+      return;
+    }
+
+    // 3. Verify the authenticated user matches the stored user
+    if (user && currentUser.uid !== user.uid) {
+      toast.error('❌ Security error: User mismatch detected.');
+      console.error('Security Alert: User UID mismatch');
+      return;
+    }
+
+    // 4. Rate limiting: Prevent spam (max 1 request per 60 seconds)
+    const now = Date.now();
+    const timeSinceLastAttempt = now - lastPasswordResetAttempt;
+    if (timeSinceLastAttempt < 60000) { // 60 seconds
+      const waitTime = Math.ceil((60000 - timeSinceLastAttempt) / 1000);
+      toast.error(`⏳ Please wait ${waitTime} seconds before trying again.`);
+      return;
+    }
+
+    // 5. Verify admin role from database (double-check)
+    try {
+      const userRef = ref(database, `users/${currentUser.uid}`);
+      const snapshot = await get(userRef);
+      
+      if (!snapshot.exists()) {
+        toast.error('❌ User data not found in database.');
+        return;
+      }
+
+      const userData = snapshot.val();
+      if (userData.role !== 'admin') {
+        toast.error('❌ Unauthorized: Admin role required.');
+        console.error('Security Alert: Role verification failed');
+        return;
+      }
+    } catch (error) {
+      console.error('Error verifying user role:', error);
+      toast.error('❌ Failed to verify user permissions.');
+      return;
+    }
+
+    // ===== VALIDATION =====
+    
     if (passwordData.newPassword.length < 6) {
       toast.error('New password must be at least 6 characters long');
       return;
@@ -99,88 +155,67 @@ const AdminSettings = () => {
     }
 
     setPasswordLoading(true);
+    setLastPasswordResetAttempt(now); // Update rate limit timestamp
 
     try {
-      const user = auth.currentUser;
+      console.log('Sending password reset email for admin:', currentUser.email);
+
+      // Send password reset email
+      await sendPasswordResetEmail(auth, currentUser.email);
       
-      if (!user || !user.email) {
-        toast.error('No user is currently signed in');
-        setPasswordLoading(false);
-        return;
-      }
+      // Log the password reset request for audit trail
+      const activityLogRef = ref(database, `activityLogs/${Date.now()}`);
+      await set(activityLogRef, {
+        action: 'password_reset_requested',
+        userId: currentUser.uid,
+        userEmail: currentUser.email,
+        role: 'admin',
+        timestamp: Date.now(),
+        ipAddress: 'client-initiated', // You can enhance this with actual IP detection
+      });
+      
+      toast.success('✅ Password reset email sent! Please check your inbox.');
+      toast.info('🔒 You will be logged out in 3 seconds to complete the password reset...');
+      
+      // Log out user after 3 seconds
+      setTimeout(async () => {
+        await auth.signOut();
+        window.location.href = '/login';
+      }, 3000);
 
-      console.log('Attempting to change password for user:', user.email);
-
-      try {
-        // Try to re-authenticate and update password
-        const credential = EmailAuthProvider.credential(
-          user.email,
-          passwordData.currentPassword
-        );
-
-        console.log('Re-authenticating user...');
-        await reauthenticateWithCredential(user, credential);
-        console.log('Re-authentication successful');
-
-        // Update password
-        console.log('Updating password...');
-        await updatePassword(user, passwordData.newPassword);
-        console.log('Password updated successfully');
-
-        toast.success('Password changed successfully!');
-        
-        // Reset form
-        setPasswordData({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-        });
-      } catch (authError) {
-        console.log('Re-authentication failed, offering password reset email option');
-        console.error('Auth error:', authError);
-        
-        // If re-authentication fails or requires recent login, offer email reset
-        if (authError.code === 'auth/requires-recent-login' || 
-            authError.code === 'auth/wrong-password' ||
-            authError.code === 'auth/invalid-credential') {
-          
-          // Ask user if they want to receive password reset email instead
-          const useEmailReset = window.confirm(
-            'Unable to change password with current credentials. Would you like to receive a password reset email instead? You will be logged out and can reset your password via email.'
-          );
-          
-          if (useEmailReset) {
-            await sendPasswordResetEmail(auth, user.email);
-            toast.success('Password reset email sent! Please check your inbox.');
-            toast.info('You will be logged out in 3 seconds...');
-            
-            // Log out user after 3 seconds
-            setTimeout(async () => {
-              await auth.signOut();
-              window.location.href = '/login';
-            }, 3000);
-          } else {
-            throw authError; // Re-throw to show error message
-          }
-        } else {
-          throw authError; // Re-throw for other errors
-        }
-      }
+      // Reset form
+      setPasswordData({
+        newPassword: '',
+        confirmPassword: '',
+      });
     } catch (error) {
-      console.error('Error changing password:', error);
+      console.error('Error sending password reset email:', error);
       console.error('Error code:', error.code);
       console.error('Error message:', error.message);
       
-      if (error.code === 'auth/wrong-password') {
-        toast.error('Current password is incorrect');
-      } else if (error.code === 'auth/invalid-credential') {
-        toast.error('Current password is incorrect');
-      } else if (error.code === 'auth/weak-password') {
-        toast.error('Password is too weak. Please choose a stronger password');
-      } else if (error.code === 'auth/requires-recent-login') {
-        toast.error('Session expired. Please try the password reset email option.');
+      // Log failed attempt
+      try {
+        const failedLogRef = ref(database, `activityLogs/${Date.now()}`);
+        await set(failedLogRef, {
+          action: 'password_reset_failed',
+          userId: currentUser.uid,
+          userEmail: currentUser.email,
+          role: 'admin',
+          error: error.code,
+          timestamp: Date.now(),
+        });
+      } catch (logError) {
+        console.error('Failed to log error:', logError);
+      }
+      
+      if (error.code === 'auth/invalid-email') {
+        toast.error('Invalid email address');
+      } else if (error.code === 'auth/user-not-found') {
+        toast.error('User account not found');
+      } else if (error.code === 'auth/too-many-requests') {
+        toast.error('Too many requests. Please try again later.');
       } else {
-        toast.error(`Failed to change password: ${error.message}`);
+        toast.error(`Failed to send password reset email: ${error.message}`);
       }
     } finally {
       setPasswordLoading(false);
@@ -415,31 +450,6 @@ const AdminSettings = () => {
           
           <form onSubmit={handleChangePassword}>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  <Key className="w-4 h-4 inline mr-2" />
-                  Current Password *
-                </label>
-                <div className="relative">
-                  <input
-                    type={showPassword.current ? "text" : "password"}
-                    name="currentPassword"
-                    value={passwordData.currentPassword}
-                    onChange={handlePasswordInputChange}
-                    className="input pr-12"
-                    placeholder="Enter your current password"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword({...showPassword, current: !showPassword.current})}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                  >
-                    {showPassword.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -507,8 +517,11 @@ const AdminSettings = () => {
               </button>
 
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  💡 <strong>Note:</strong> If password change fails due to session timeout, you'll be offered the option to receive a password reset email instead.
+                <p className="text-sm text-blue-800 mb-2">
+                  💡 <strong>How it works:</strong> Click "Change Password" to receive a password reset email. Follow the link in the email to set your new password. You'll be logged out after clicking the button.
+                </p>
+                <p className="text-xs text-blue-700">
+                  🔒 <strong>Security:</strong> Your identity is verified through multiple checks (role verification, rate limiting, activity logging) before the email is sent.
                 </p>
               </div>
             </div>

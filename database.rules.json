@@ -36,6 +36,14 @@
     "settings": {
       ".read": true,
       ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin'"
+    },
+    "activityLogs": {
+      ".read": "root.child('users/' + auth.uid + '/role').val() === 'admin'",
+      ".write": "auth != null"
+    },
+    "announcements": {
+      ".read": true,
+      ".write": "root.child('users/' + auth.uid + '/role').val() === 'admin'"
     }
   }
 }
