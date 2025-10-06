@@ -334,18 +334,29 @@ const CustomerDashboard = () => {
                 <div className="space-y-3">
                   {selectedOrder.items?.map((item, idx) => (
                     <div key={idx} className="flex items-center gap-4 border-b pb-3">
-                      {item.image && (
-                        <img 
-                          src={item.image} 
-                          alt={item.name}
-                          className="w-16 h-16 object-cover rounded"
-                        />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium">{item.name}</p>
+                      {/* Product Image - Always show with fallback */}
+                      <div className="w-20 h-20 flex-shrink-0">
+                        {item.image ? (
+                          <img 
+                            src={item.image} 
+                            alt={item.name}
+                            className="w-full h-full object-cover rounded-lg border-2 border-gray-200"
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = 'https://via.placeholder.com/80?text=No+Image';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 rounded-lg border-2 border-gray-200 flex items-center justify-center">
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900">{item.name}</p>
                         <p className="text-sm text-gray-600">GH₵ {item.price.toFixed(2)} × {item.quantity}</p>
                       </div>
-                      <p className="font-semibold">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
+                      <p className="font-semibold text-gray-900">GH₵ {(item.price * item.quantity).toFixed(2)}</p>
                     </div>
                   ))}
                 </div>
