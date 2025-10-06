@@ -7,13 +7,13 @@ importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging-comp
 
 // Initialize Firebase in the service worker
 firebase.initializeApp({
-  apiKey: "AIzaSyBF8xH4YvqTF0K7t2F9R3bKZ6pJz4zPQ8w",
+  apiKey: "AIzaSyAq_TJqkwNNTLLcJQaA4vZuvXG2rBTTUkQ",
   authDomain: "msspecial-e-commerce.firebaseapp.com",
   databaseURL: "https://msspecial-e-commerce-default-rtdb.firebaseio.com",
   projectId: "msspecial-e-commerce",
-  storageBucket: "msspecial-e-commerce.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abcdef123456"
+  storageBucket: "msspecial-e-commerce.firebasestorage.app",
+  messagingSenderId: "58578486361",
+  appId: "1:58578486361:web:678ec06364c0c5780e1d48"
 });
 
 // Retrieve Firebase Messaging instance
