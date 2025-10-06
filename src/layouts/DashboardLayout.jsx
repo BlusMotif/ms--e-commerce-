@@ -23,6 +23,7 @@ import {
   Home
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import useNotificationStore from '../store/notificationStore';
 
 const DashboardLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,6 +35,9 @@ const DashboardLayout = () => {
   const location = useLocation();
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
   const [products, setProducts] = useState([]);
+  
+  // Use global notification store for sound alerts
+  const { updateOrderCount } = useNotificationStore();
 
   // Fetch products for agent filtering
   useEffect(() => {
@@ -54,7 +58,7 @@ const DashboardLayout = () => {
     return () => unsubscribe();
   }, [role]);
 
-  // Fetch pending orders count for admin/agent
+  // Fetch pending orders count for admin/agent AND track total orders for sound alerts
   useEffect(() => {
     if (role !== 'admin' && role !== 'agent') return;
 
@@ -65,35 +69,57 @@ const DashboardLayout = () => {
         const ordersArray = Object.keys(data).map((key) => ({
           id: key,
           ...data[key],
-        }));
+        })).filter(order => {
+          // Exclude cancelled orders UNLESS they are Cash on Delivery
+          const isCancelled = order.status === 'cancelled' || order.paymentStatus === 'cancelled';
+          const isCashOnDelivery = order.paymentMethod === 'cash' || order.paymentMethod === 'cod';
+          
+          // Show if: NOT cancelled OR is cash on delivery
+          return !isCancelled || isCashOnDelivery;
+        });
 
-        let count = 0;
+        let pendingCount = 0;
+        let totalRelevantOrders = 0;
+        
         if (role === 'admin') {
           // Count all pending orders for admin
-          count = ordersArray.filter(o => 
+          pendingCount = ordersArray.filter(o => 
             o.status === 'pending' || o.status === 'processing'
           ).length;
+          
+          // Track total orders for sound alerts (all orders)
+          totalRelevantOrders = ordersArray.length;
         } else if (role === 'agent') {
-          // Count agent's pending orders only
-          count = ordersArray.filter(order => {
-            const hasPendingStatus = order.status === 'pending' || order.status === 'processing';
-            const hasAgentProducts = order.items?.some(item => {
+          // Filter orders that contain agent's products
+          const agentOrders = ordersArray.filter(order => 
+            order.items?.some(item => {
               // Find the product to check if it belongs to this agent
               const product = products.find(p => p.name === item.name || p.id === item.productId);
               return product && (product.agentId === user.uid || product.createdBy === user.uid);
-            });
-            return hasPendingStatus && hasAgentProducts;
-          }).length;
+            })
+          );
+          
+          // Count agent's pending orders only
+          pendingCount = agentOrders.filter(order => 
+            order.status === 'pending' || order.status === 'processing'
+          ).length;
+          
+          // Track total agent orders for sound alerts
+          totalRelevantOrders = agentOrders.length;
         }
 
-        setPendingOrdersCount(count);
+        setPendingOrdersCount(pendingCount);
+        
+        // Update global order count for sound alerts - works on ALL pages!
+        updateOrderCount(totalRelevantOrders);
       } else {
         setPendingOrdersCount(0);
+        updateOrderCount(0);
       }
     });
 
     return () => unsubscribe();
-  }, [role, user, products]);
+  }, [role, user, products, updateOrderCount]);
 
   // Fetch notifications for all users (admin, agent, customer)
   useEffect(() => {

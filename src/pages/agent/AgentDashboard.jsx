@@ -32,8 +32,8 @@ const AgentDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   
-  // Use global notification store
-  const { hasUnseenOrders, updateOrderCount, markOrdersSeen } = useNotificationStore();
+  // Use global notification store (order tracking is now in DashboardLayout)
+  const { hasUnseenOrders, markOrdersSeen } = useNotificationStore();
 
   useEffect(() => {
     if (!user?.uid) return;
@@ -83,8 +83,8 @@ const AgentDashboard = () => {
           })
         );
 
-        // Use global store to track order count and trigger sound
-        updateOrderCount(agentOrders.length);
+        // Note: Global order count tracking now happens in DashboardLayout
+        // This ensures sound alerts work on ALL pages, not just dashboard
 
         setOrders(agentOrders);
       } else {
@@ -95,7 +95,6 @@ const AgentDashboard = () => {
     return () => {
       unsubscribeOrders();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, products]);
 
   // Show latest agent orders as notifications (not announcements)

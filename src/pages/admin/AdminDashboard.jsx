@@ -40,8 +40,8 @@ const AdminDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   
-  // Use global notification store
-  const { hasUnseenOrders, updateOrderCount, markOrdersSeen } = useNotificationStore();
+  // Use global notification store (order tracking is now in DashboardLayout)
+  const { hasUnseenOrders, markOrdersSeen } = useNotificationStore();
 
   useEffect(() => {
     const ordersRef = ref(database, 'orders');
@@ -60,8 +60,8 @@ const AdminDashboard = () => {
           return !isCancelled || isCashOnDelivery;
         });
         
-        // Use global store to track order count and trigger sound
-        updateOrderCount(ordersArray.length);
+        // Note: Global order count tracking now happens in DashboardLayout
+        // This ensures sound alerts work on ALL pages, not just dashboard
         
         setOrders(ordersArray);
       } else {
@@ -120,7 +120,6 @@ const AdminDashboard = () => {
       unsubscribeUsers();
       unsubscribeLogs();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Show latest orders as notifications (not announcements)
