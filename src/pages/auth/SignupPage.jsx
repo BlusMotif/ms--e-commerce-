@@ -4,7 +4,7 @@ import { createUserWithEmailAndPassword, updateProfile, signInWithPopup } from '
 import { ref, set } from 'firebase/database';
 import { auth, database, googleProvider } from '../../config/firebase';
 import toast from 'react-hot-toast';
-import { Mail, Lock, User as UserIcon, MapPin, Chrome, Phone } from 'lucide-react';
+import { Mail, Lock, User as UserIcon, MapPin, Chrome, Phone, Eye, EyeOff } from 'lucide-react';
 
 const SignupPage = () => {
   const [formData, setFormData] = useState({
@@ -16,6 +16,10 @@ const SignupPage = () => {
     confirmPassword: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState({
+    password: false,
+    confirmPassword: false
+  });
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -123,7 +127,7 @@ const SignupPage = () => {
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10"
                   placeholder="John Doe"
                   required
                 />
@@ -141,7 +145,7 @@ const SignupPage = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10"
                   placeholder="your@email.com"
                   required
                 />
@@ -159,7 +163,7 @@ const SignupPage = () => {
                   name="phoneNumber"
                   value={formData.phoneNumber}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10"
                   placeholder="+233 XX XXX XXXX"
                   required
                 />
@@ -176,7 +180,7 @@ const SignupPage = () => {
                   name="address"
                   value={formData.address}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10"
                   placeholder="Your delivery address"
                   rows="2"
                   required
@@ -191,14 +195,21 @@ const SignupPage = () => {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword.password ? "text" : "password"}
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10 pr-12"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword({...showPassword, password: !showPassword.password})}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword.password ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 
@@ -209,14 +220,21 @@ const SignupPage = () => {
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
-                  type="password"
+                  type={showPassword.confirmPassword ? "text" : "password"}
                   name="confirmPassword"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="input-field pl-10"
+                  className="input pl-10 pr-12"
                   placeholder="••••••••"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword({...showPassword, confirmPassword: !showPassword.confirmPassword})}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                >
+                  {showPassword.confirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
               </div>
             </div>
 

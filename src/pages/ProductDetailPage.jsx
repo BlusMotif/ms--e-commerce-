@@ -126,10 +126,13 @@ const ProductDetailPage = () => {
 
   // Handle share functionality
   const handleShare = async () => {
+    // Construct the full product URL explicitly
+    const productUrl = `${window.location.origin}/product/${id}`;
+    
     const shareData = {
       title: product.name,
       text: `Check out ${product.name} - ${product.salePrice ? `GH₵${product.salePrice}` : `GH₵${product.price}`}`,
-      url: window.location.href,
+      url: productUrl,
     };
 
     try {
@@ -139,7 +142,7 @@ const ProductDetailPage = () => {
         toast.success('Shared successfully!');
       } else {
         // Fallback: Copy link to clipboard
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(productUrl);
         toast.success('Link copied to clipboard!');
       }
     } catch (err) {
@@ -147,7 +150,7 @@ const ProductDetailPage = () => {
       if (err.name !== 'AbortError') {
         // Try clipboard as fallback
         try {
-          await navigator.clipboard.writeText(window.location.href);
+          await navigator.clipboard.writeText(productUrl);
           toast.success('Link copied to clipboard!');
         } catch {
           toast.error('Failed to share');

@@ -3,7 +3,7 @@ import { ref, onValue, update, set } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
 import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
-import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck } from 'lucide-react';
+import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 const AdminSettings = () => {
   const [loading, setLoading] = useState(false);
@@ -26,6 +26,13 @@ const AdminSettings = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
+  });
+
+  // Password visibility state
+  const [showPassword, setShowPassword] = useState({
+    current: false,
+    new: false,
+    confirm: false,
   });
 
   useEffect(() => {
@@ -348,15 +355,24 @@ const AdminSettings = () => {
                   <Key className="w-4 h-4 inline mr-2" />
                   Current Password *
                 </label>
-                <input
-                  type="password"
-                  name="currentPassword"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordInputChange}
-                  className="input"
-                  placeholder="Enter your current password"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword.current ? "text" : "password"}
+                    name="currentPassword"
+                    value={passwordData.currentPassword}
+                    onChange={handlePasswordInputChange}
+                    className="input pr-12"
+                    placeholder="Enter your current password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword({...showPassword, current: !showPassword.current})}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword.current ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -365,16 +381,25 @@ const AdminSettings = () => {
                     <ShieldCheck className="w-4 h-4 inline mr-2" />
                     New Password *
                   </label>
-                  <input
-                    type="password"
-                    name="newPassword"
-                    value={passwordData.newPassword}
-                    onChange={handlePasswordInputChange}
-                    className="input"
-                    placeholder="Enter new password"
-                    minLength="6"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword.new ? "text" : "password"}
+                      name="newPassword"
+                      value={passwordData.newPassword}
+                      onChange={handlePasswordInputChange}
+                      className="input pr-12"
+                      placeholder="Enter new password"
+                      minLength="6"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword({...showPassword, new: !showPassword.new})}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword.new ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
                     Must be at least 6 characters
                   </p>
@@ -385,16 +410,25 @@ const AdminSettings = () => {
                     <ShieldCheck className="w-4 h-4 inline mr-2" />
                     Confirm New Password *
                   </label>
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={passwordData.confirmPassword}
-                    onChange={handlePasswordInputChange}
-                    className="input"
-                    placeholder="Confirm new password"
-                    minLength="6"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword.confirm ? "text" : "password"}
+                      name="confirmPassword"
+                      value={passwordData.confirmPassword}
+                      onChange={handlePasswordInputChange}
+                      className="input pr-12"
+                      placeholder="Confirm new password"
+                      minLength="6"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword({...showPassword, confirm: !showPassword.confirm})}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    >
+                      {showPassword.confirm ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 

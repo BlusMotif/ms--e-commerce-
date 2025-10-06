@@ -17,8 +17,35 @@
     @apply bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors duration-200;
   }
   
+  .btn-outline {
+    @apply border-2 px-4 py-2 rounded-lg font-medium transition-colors duration-200;
+  }
+  
   .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+    @apply w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200;
+  }
+  
+  /* Enhanced input styles - taller boxes, visible borders */
+  .input {
+    @apply w-full px-4 py-3.5 border-2 border-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-600 transition-all duration-200 bg-white;
+  }
+  
+  /* Even taller on mobile for better touch targets */
+  @media (max-width: 640px) {
+    .input {
+      @apply py-4 border-2;
+      min-height: 50px;
+    }
+  }
+  
+  /* Larger text areas */
+  textarea.input {
+    @apply min-h-[120px];
+  }
+  
+  /* Select dropdowns */
+  select.input {
+    @apply cursor-pointer;
   }
   
   .card {
