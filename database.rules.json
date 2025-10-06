@@ -1,6 +1,7 @@
-The {
+{
   "rules": {
     "users": {
+      ".read": "root.child('users/' + auth.uid + '/role').val() === 'admin'",
       "$uid": {
         ".read": "$uid === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin'",
         ".write": "$uid === auth.uid || root.child('users/' + auth.uid + '/role').val() === 'admin'"

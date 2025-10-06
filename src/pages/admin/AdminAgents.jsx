@@ -30,6 +30,7 @@ const AdminAgents = () => {
     // Fetch users
     const usersRef = ref(database, 'users');
     const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      console.log('Users snapshot exists:', snapshot.exists());
       if (snapshot.exists()) {
         const data = snapshot.val();
         const usersArray = Object.keys(data)
@@ -38,11 +39,17 @@ const AdminAgents = () => {
             ...data[key],
           }))
           .filter(user => user.role === 'agent');
+        console.log('Agents found:', usersArray.length, usersArray);
         setUsers(usersArray);
       } else {
+        console.log('No users found in database');
         setUsers([]);
       }
       setLoading(false);
+    }, (error) => {
+      console.error('Error fetching users:', error);
+      setLoading(false);
+      toast.error('Failed to load agents data');
     });
 
     // Fetch products for agent stats
@@ -54,8 +61,14 @@ const AdminAgents = () => {
           id: key,
           ...data[key],
         }));
+        console.log('Products found:', productsArray.length);
         setProducts(productsArray);
+      } else {
+        console.log('No products found');
+        setProducts([]);
       }
+    }, (error) => {
+      console.error('Error fetching products:', error);
     });
 
     // Fetch orders for agent stats
@@ -67,8 +80,14 @@ const AdminAgents = () => {
           id: key,
           ...data[key],
         }));
+        console.log('Orders found:', ordersArray.length);
         setOrders(ordersArray);
+      } else {
+        console.log('No orders found');
+        setOrders([]);
       }
+    }, (error) => {
+      console.error('Error fetching orders:', error);
     });
 
     return () => {
@@ -264,12 +283,12 @@ const AdminAgents = () => {
   const getAgentStats = (agentId) => {
     const agentProducts = products.filter(p => p.agentId === agentId);
     const agentOrders = orders.filter(o => 
-      o.items.some(item => {
+      o.items && Array.isArray(o.items) && o.items.some(item => {
         const product = products.find(p => p.name === item.name);
         return product && product.agentId === agentId;
       })
     );
-    const totalSales = agentOrders.reduce((sum, order) => sum + order.total, 0);
+    const totalSales = agentOrders.reduce((sum, order) => sum + (order.total || 0), 0);
 
     return {
       products: agentProducts.length,
@@ -295,7 +314,7 @@ const AdminAgents = () => {
     active: users.filter(u => u.status !== 'blocked').length,
     blocked: users.filter(u => u.status === 'blocked').length,
     totalProducts: products.length,
-    totalSales: orders.reduce((sum, o) => sum + o.total, 0),
+    totalSales: orders.reduce((sum, o) => sum + (o.total || 0), 0),
   };
 
   if (loading) {
