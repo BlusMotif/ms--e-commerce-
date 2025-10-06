@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ref, onValue, update, set } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
-import { updatePassword, EmailAuthProvider, reauthenticateWithCredential } from 'firebase/auth';
+import { updatePassword, EmailAuthProvider, reauthenticateWithCredential, sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
 import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
@@ -111,29 +111,61 @@ const AdminSettings = () => {
 
       console.log('Attempting to change password for user:', user.email);
 
-      // Re-authenticate user with current password
-      const credential = EmailAuthProvider.credential(
-        user.email,
-        passwordData.currentPassword
-      );
+      try {
+        // Try to re-authenticate and update password
+        const credential = EmailAuthProvider.credential(
+          user.email,
+          passwordData.currentPassword
+        );
 
-      console.log('Re-authenticating user...');
-      await reauthenticateWithCredential(user, credential);
-      console.log('Re-authentication successful');
+        console.log('Re-authenticating user...');
+        await reauthenticateWithCredential(user, credential);
+        console.log('Re-authentication successful');
 
-      // Update password
-      console.log('Updating password...');
-      await updatePassword(user, passwordData.newPassword);
-      console.log('Password updated successfully');
+        // Update password
+        console.log('Updating password...');
+        await updatePassword(user, passwordData.newPassword);
+        console.log('Password updated successfully');
 
-      toast.success('Password changed successfully!');
-      
-      // Reset form
-      setPasswordData({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
+        toast.success('Password changed successfully!');
+        
+        // Reset form
+        setPasswordData({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        });
+      } catch (authError) {
+        console.log('Re-authentication failed, offering password reset email option');
+        console.error('Auth error:', authError);
+        
+        // If re-authentication fails or requires recent login, offer email reset
+        if (authError.code === 'auth/requires-recent-login' || 
+            authError.code === 'auth/wrong-password' ||
+            authError.code === 'auth/invalid-credential') {
+          
+          // Ask user if they want to receive password reset email instead
+          const useEmailReset = window.confirm(
+            'Unable to change password with current credentials. Would you like to receive a password reset email instead? You will be logged out and can reset your password via email.'
+          );
+          
+          if (useEmailReset) {
+            await sendPasswordResetEmail(auth, user.email);
+            toast.success('Password reset email sent! Please check your inbox.');
+            toast.info('You will be logged out in 3 seconds...');
+            
+            // Log out user after 3 seconds
+            setTimeout(async () => {
+              await auth.signOut();
+              window.location.href = '/login';
+            }, 3000);
+          } else {
+            throw authError; // Re-throw to show error message
+          }
+        } else {
+          throw authError; // Re-throw for other errors
+        }
+      }
     } catch (error) {
       console.error('Error changing password:', error);
       console.error('Error code:', error.code);
@@ -146,7 +178,7 @@ const AdminSettings = () => {
       } else if (error.code === 'auth/weak-password') {
         toast.error('Password is too weak. Please choose a stronger password');
       } else if (error.code === 'auth/requires-recent-login') {
-        toast.error('Please log out and log in again before changing your password');
+        toast.error('Session expired. Please try the password reset email option.');
       } else {
         toast.error(`Failed to change password: ${error.message}`);
       }
@@ -474,9 +506,11 @@ const AdminSettings = () => {
                 {passwordLoading ? 'Changing Password...' : 'Change Password'}
               </button>
 
-              <p className="text-sm text-gray-600">
-                ⚠️ You will remain logged in after changing your password
-              </p>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-800">
+                  💡 <strong>Note:</strong> If password change fails due to session timeout, you'll be offered the option to receive a password reset email instead.
+                </p>
+              </div>
             </div>
           </form>
         </div>
