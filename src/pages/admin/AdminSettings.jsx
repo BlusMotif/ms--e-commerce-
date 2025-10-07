@@ -43,7 +43,23 @@ const AdminSettings = () => {
     const settingsRef = ref(database, 'settings');
     const unsubscribe = onValue(settingsRef, (snapshot) => {
       if (snapshot.exists()) {
-        setSettings(snapshot.val());
+        const dbSettings = snapshot.val();
+        // Merge with default values to ensure all fields exist
+        setSettings({
+          storeName: dbSettings.storeName || 'MS Special',
+          storeEmail: dbSettings.storeEmail || 'info@msspecial.com',
+          storePhone: dbSettings.storePhone || '+233 XX XXX XXXX',
+          storeAddress: dbSettings.storeAddress || 'Accra, Ghana',
+          deliveryFee: dbSettings.deliveryFee || 10,
+          pickupLocations: dbSettings.pickupLocations || 'accra,tema,kumasi',
+          whatsappNumber: dbSettings.whatsappNumber || '+233 XX XXX XXXX',
+          customerServicePhone: dbSettings.customerServicePhone || '+233 XX XXX XXXX',
+          customerServicePhone2: dbSettings.customerServicePhone2 || '',
+          facebookUrl: dbSettings.facebookUrl || '',
+          instagramUrl: dbSettings.instagramUrl || '',
+          twitterUrl: dbSettings.twitterUrl || '',
+          maxUploadSizeMB: dbSettings.maxUploadSizeMB || 2,
+        });
       }
     });
 
@@ -64,16 +80,31 @@ const AdminSettings = () => {
 
     try {
       const settingsRef = ref(database, 'settings');
-      await set(settingsRef, {
-        ...settings,
-        deliveryFee: parseFloat(settings.deliveryFee),
-        maxUploadSizeMB: parseFloat(settings.maxUploadSizeMB),
+      
+      // Prepare settings data with proper type conversions
+      const settingsData = {
+        storeName: settings.storeName || 'MS Special',
+        storeEmail: settings.storeEmail || '',
+        storePhone: settings.storePhone || '',
+        storeAddress: settings.storeAddress || '',
+        deliveryFee: parseFloat(settings.deliveryFee) || 0,
+        pickupLocations: settings.pickupLocations || '',
+        whatsappNumber: settings.whatsappNumber || '',
+        customerServicePhone: settings.customerServicePhone || '',
+        customerServicePhone2: settings.customerServicePhone2 || '',
+        facebookUrl: settings.facebookUrl || '',
+        instagramUrl: settings.instagramUrl || '',
+        twitterUrl: settings.twitterUrl || '',
+        maxUploadSizeMB: parseFloat(settings.maxUploadSizeMB) || 2,
         updatedAt: Date.now(),
-      });
+      };
+      
+      await set(settingsRef, settingsData);
       toast.success('Settings saved successfully!');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Failed to save settings');
+      console.error('Error details:', error.message);
+      toast.error(`Failed to save settings: ${error.message}`);
     } finally {
       setLoading(false);
     }
