@@ -27,6 +27,9 @@ const Footer = () => {
     const name = platformName.toLowerCase().trim();
     
     // Map platform names to their icons
+    if (name.includes('facebook')) return Facebook;
+    if (name.includes('instagram')) return Instagram;
+    if (name.includes('twitter') || name.includes('x.com')) return Twitter;
     if (name.includes('linkedin')) return Linkedin;
     if (name.includes('youtube')) return Youtube;
     if (name.includes('whatsapp')) return MessageCircle;
@@ -154,10 +157,11 @@ const Footer = () => {
                     href={settings.facebookUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    className="group hover:text-white transition transform hover:scale-110 duration-200 flex flex-col items-center"
                     title="Follow us on Facebook"
                   >
                     <Facebook className="w-6 h-6" />
+                    <span className="text-xs mt-1 opacity-75 group-hover:opacity-100">Facebook</span>
                   </a>
                 )}
                 {settings.instagramUrl && (
@@ -165,10 +169,11 @@ const Footer = () => {
                     href={settings.instagramUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    className="group hover:text-white transition transform hover:scale-110 duration-200 flex flex-col items-center"
                     title="Follow us on Instagram"
                   >
                     <Instagram className="w-6 h-6" />
+                    <span className="text-xs mt-1 opacity-75 group-hover:opacity-100">Instagram</span>
                   </a>
                 )}
                 {settings.twitterUrl && (
@@ -176,10 +181,11 @@ const Footer = () => {
                     href={settings.twitterUrl} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    className="group hover:text-white transition transform hover:scale-110 duration-200 flex flex-col items-center"
                     title="Follow us on Twitter"
                   >
                     <Twitter className="w-6 h-6" />
+                    <span className="text-xs mt-1 opacity-75 group-hover:opacity-100">Twitter</span>
                   </a>
                 )}
                 {settings.socialMediaLinks && settings.socialMediaLinks.map((link, index) => {
