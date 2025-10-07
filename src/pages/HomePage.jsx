@@ -223,13 +223,13 @@ const HomePage = () => {
       {/* Categories */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-2xl font-bold mb-6 text-center">Shop by Category</h2>
-        <div className="flex justify-center">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 justify-items-center">
+        <div className="flex justify-center items-center">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 place-items-center">
             {categories.map((category) => (
               <Link
                 key={category.id}
                 to={`/products?category=${category.slug}`}
-                className="group animate-fade-in"
+                className="group animate-fade-in w-full max-w-[180px]"
               >
                 <div className="bg-white rounded-lg border border-gray-200 hover:border-primary-500 hover:shadow-md transition-all duration-200 overflow-hidden">
                   {/* Image/Icon Section - Compact */}
