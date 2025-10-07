@@ -2,10 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, Globe } from 'lucide-react';
+import { 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Facebook, 
+  Instagram, 
+  Twitter, 
+  Globe, 
+  Linkedin, 
+  Youtube, 
+  MessageCircle,
+  Send,
+  Hash,
+  Github,
+  Music
+} from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+
+  // Function to get the appropriate icon based on platform name
+  const getSocialIcon = (platformName) => {
+    const name = platformName.toLowerCase().trim();
+    
+    // Map platform names to their icons
+    if (name.includes('linkedin')) return Linkedin;
+    if (name.includes('youtube')) return Youtube;
+    if (name.includes('whatsapp')) return MessageCircle;
+    if (name.includes('telegram')) return Send;
+    if (name.includes('tiktok')) return Music;
+    if (name.includes('github')) return Github;
+    if (name.includes('discord') || name.includes('reddit')) return Hash;
+    if (name.includes('snapchat')) return MessageCircle;
+    if (name.includes('pinterest')) return Hash;
+    
+    // Default icon
+    return Globe;
+  };
+
   const [settings, setSettings] = useState({
     storeAddress: 'Okaishei - Accra',
     storePhone: '+233 24 298 8277',
@@ -147,8 +182,12 @@ const Footer = () => {
                     <Twitter className="w-6 h-6" />
                   </a>
                 )}
-                {settings.socialMediaLinks && settings.socialMediaLinks.map((link, index) => (
-                  link.url && link.platform && (
+                {settings.socialMediaLinks && settings.socialMediaLinks.map((link, index) => {
+                  if (!link.url || !link.platform) return null;
+                  
+                  const IconComponent = getSocialIcon(link.platform);
+                  
+                  return (
                     <a 
                       key={index}
                       href={link.url} 
@@ -157,11 +196,11 @@ const Footer = () => {
                       className="group hover:text-white transition transform hover:scale-110 duration-200 flex flex-col items-center"
                       title={`Follow us on ${link.platform}`}
                     >
-                      <Globe className="w-6 h-6" />
+                      <IconComponent className="w-6 h-6" />
                       <span className="text-xs mt-1 opacity-75 group-hover:opacity-100">{link.platform}</span>
                     </a>
-                  )
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-400">Connect with us on social media!</p>
