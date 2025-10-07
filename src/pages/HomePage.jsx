@@ -335,7 +335,7 @@ const HomePage = () => {
       )}
 
       {/* Call to Order Section */}
-      {(settings.customerServicePhone || settings.whatsappNumber) && (
+      {(settings.customerServicePhone || settings.customerServicePhone2 || settings.whatsappNumber) && (
         <section className="bg-gradient-to-br from-primary-50 to-primary-100 py-16">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
@@ -348,7 +348,7 @@ const HomePage = () => {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
               {/* Primary Phone */}
               {settings.customerServicePhone && (
                 <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
@@ -361,7 +361,7 @@ const HomePage = () => {
                     <h3 className="text-xl font-bold text-white text-center">Primary Line</h3>
                   </div>
                   <div className="p-6">
-                    <p className="text-3xl font-bold text-center text-gray-900 mb-4">
+                    <p className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-4 break-all">
                       {settings.customerServicePhone}
                     </p>
                     <a
@@ -378,51 +378,61 @@ const HomePage = () => {
                 </div>
               )}
 
-              {/* Secondary Phone or WhatsApp */}
-              {(settings.customerServicePhone2 || settings.whatsappNumber) && (
+              {/* Secondary Phone */}
+              {settings.customerServicePhone2 && (
+                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-600 to-blue-700 p-6">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                        <Phone className="w-8 h-8 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white text-center">Secondary Line</h3>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-4 break-all">
+                      {settings.customerServicePhone2}
+                    </p>
+                    <a
+                      href={`tel:${settings.customerServicePhone2}`}
+                      className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
+                    >
+                      <Phone className="w-5 h-5 inline mr-2" />
+                      Call Now
+                    </a>
+                    <p className="text-sm text-gray-600 text-center mt-3">
+                      Alternative contact line
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* WhatsApp */}
+              {settings.whatsappNumber && (
                 <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
                   <div className="bg-gradient-to-r from-green-600 to-green-700 p-6">
                     <div className="flex items-center justify-center mb-2">
                       <div className="bg-white bg-opacity-20 p-3 rounded-full">
-                        {settings.customerServicePhone2 ? (
-                          <Phone className="w-8 h-8 text-white" />
-                        ) : (
-                          <MessageCircle className="w-8 h-8 text-white" />
-                        )}
+                        <MessageCircle className="w-8 h-8 text-white" />
                       </div>
                     </div>
-                    <h3 className="text-xl font-bold text-white text-center">
-                      {settings.customerServicePhone2 ? 'Secondary Line' : 'WhatsApp'}
-                    </h3>
+                    <h3 className="text-xl font-bold text-white text-center">WhatsApp</h3>
                   </div>
                   <div className="p-6">
-                    <p className="text-3xl font-bold text-center text-gray-900 mb-4">
-                      {settings.customerServicePhone2 || settings.whatsappNumber}
+                    <p className="text-2xl md:text-3xl font-bold text-center text-gray-900 mb-4 break-all">
+                      {settings.whatsappNumber}
                     </p>
                     <a
-                      href={
-                        settings.customerServicePhone2
-                          ? `tel:${settings.customerServicePhone2}`
-                          : `https://wa.me/${settings.whatsappNumber.replace(/\s+/g, '')}`
-                      }
-                      target={settings.customerServicePhone2 ? '_self' : '_blank'}
-                      rel={settings.customerServicePhone2 ? '' : 'noopener noreferrer'}
+                      href={`https://wa.me/${settings.whatsappNumber.replace(/\s+/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
                     >
-                      {settings.customerServicePhone2 ? (
-                        <>
-                          <Phone className="w-5 h-5 inline mr-2" />
-                          Call Now
-                        </>
-                      ) : (
-                        <>
-                          <MessageCircle className="w-5 h-5 inline mr-2" />
-                          Chat on WhatsApp
-                        </>
-                      )}
+                      <MessageCircle className="w-5 h-5 inline mr-2" />
+                      Chat on WhatsApp
                     </a>
                     <p className="text-sm text-gray-600 text-center mt-3">
-                      {settings.customerServicePhone2 ? 'Alternative contact line' : 'Quick response via WhatsApp'}
+                      Quick response via WhatsApp
                     </p>
                   </div>
                 </div>
