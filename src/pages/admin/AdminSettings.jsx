@@ -496,65 +496,23 @@ const AdminSettings = () => {
           </h2>
           
           <div className="space-y-4">
-            {/* Default Social Media */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Facebook URL
-              </label>
-              <input
-                type="url"
-                name="facebookUrl"
-                value={settings.facebookUrl}
-                onChange={handleInputChange}
-                className="input"
-                placeholder="https://facebook.com/yourpage"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Instagram URL
-              </label>
-              <input
-                type="url"
-                name="instagramUrl"
-                value={settings.instagramUrl}
-                onChange={handleInputChange}
-                className="input"
-                placeholder="https://instagram.com/yourpage"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Twitter URL
-              </label>
-              <input
-                type="url"
-                name="twitterUrl"
-                value={settings.twitterUrl}
-                onChange={handleInputChange}
-                className="input"
-                placeholder="https://twitter.com/yourpage"
-              />
-            </div>
-
-            {/* Divider */}
-            <div className="border-t border-gray-200 pt-4 mt-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-md font-semibold text-gray-800">Additional Social Media</h3>
-                <button
-                  type="button"
-                  onClick={handleAddSocialMedia}
-                  className="btn-outline flex items-center space-x-2 text-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>Add Platform</span>
-                </button>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-md font-semibold text-gray-800">Your Social Media Platforms</h3>
+                <p className="text-sm text-gray-600 mt-1">Add all your social media links (Facebook, Instagram, Twitter, LinkedIn, etc.)</p>
               </div>
+              <button
+                type="button"
+                onClick={handleAddSocialMedia}
+                className="btn-outline flex items-center space-x-2 text-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Platform</span>
+              </button>
+            </div>
 
-              {settings.socialMediaLinks && settings.socialMediaLinks.length > 0 && (
-                <div className="space-y-3">
+            {settings.socialMediaLinks && settings.socialMediaLinks.length > 0 && (
+              <div className="space-y-3">
                   {settings.socialMediaLinks.map((link, index) => (
                     <div key={index} className="flex gap-3 items-start p-4 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -596,12 +554,11 @@ const AdminSettings = () => {
                 </div>
               )}
 
-              {(!settings.socialMediaLinks || settings.socialMediaLinks.length === 0) && (
-                <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                  No additional social media links added. Click "Add Platform" to get started.
+            {(!settings.socialMediaLinks || settings.socialMediaLinks.length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  No social media links added yet. Click "Add Platform" to add Facebook, Instagram, Twitter, LinkedIn, or any other platform.
                 </p>
               )}
-            </div>
           </div>
         </div>
 
