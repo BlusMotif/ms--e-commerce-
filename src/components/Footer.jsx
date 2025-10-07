@@ -1,9 +1,38 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ref, onValue } from 'firebase/database';
+import { database } from '../config/firebase';
 import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
+  const [settings, setSettings] = useState({
+    storeAddress: 'Okaishei - Accra',
+    storePhone: '+233 24 298 8277',
+    storeEmail: 'msfoods.gh@gmail.com',
+    facebookUrl: '',
+    instagramUrl: '',
+    twitterUrl: '',
+  });
+
+  useEffect(() => {
+    const settingsRef = ref(database, 'settings');
+    const unsubscribe = onValue(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        setSettings({
+          storeAddress: data.storeAddress || 'Okaishei - Accra',
+          storePhone: data.storePhone || '+233 24 298 8277',
+          storeEmail: data.storeEmail || 'msfoods.gh@gmail.com',
+          facebookUrl: data.facebookUrl || '',
+          instagramUrl: data.instagramUrl || '',
+          twitterUrl: data.twitterUrl || '',
+        });
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <footer className="bg-gray-900 text-gray-300">
@@ -61,18 +90,18 @@ const Footer = () => {
             <ul className="space-y-3">
               <li className="flex items-start space-x-2">
                 <MapPin className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span className="text-sm">{import.meta.env.VITE_STORE_LOCATION || 'Okaishei - Accra'}</span>
+                <span className="text-sm">{settings.storeAddress}</span>
               </li>
               <li className="flex items-center space-x-2">
                 <Phone className="w-5 h-5 flex-shrink-0" />
-                <a href={`tel:${import.meta.env.VITE_STORE_PHONE || '+233242988277'}`} className="text-sm hover:text-white transition">
-                  {import.meta.env.VITE_STORE_PHONE || '+233 24 298 8277'}
+                <a href={`tel:${settings.storePhone}`} className="text-sm hover:text-white transition">
+                  {settings.storePhone}
                 </a>
               </li>
               <li className="flex items-center space-x-2">
                 <Mail className="w-5 h-5 flex-shrink-0" />
-                <a href={`mailto:${import.meta.env.VITE_STORE_EMAIL || 'msfoods.gh@gmail.com'}`} className="text-sm hover:text-white transition">
-                  {import.meta.env.VITE_STORE_EMAIL || 'msfoods.gh@gmail.com'}
+                <a href={`mailto:${settings.storeEmail}`} className="text-sm hover:text-white transition">
+                  {settings.storeEmail}
                 </a>
               </li>
             </ul>
@@ -81,17 +110,45 @@ const Footer = () => {
           {/* Social Media */}
           <div>
             <h3 className="text-white text-lg font-bold mb-4">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="hover:text-white transition">
-                <Facebook className="w-6 h-6" />
-              </a>
-              <a href="#" className="hover:text-white transition">
-                <Instagram className="w-6 h-6" />
-              </a>
-              <a href="#" className="hover:text-white transition">
-                <Twitter className="w-6 h-6" />
-              </a>
-            </div>
+            {(settings.facebookUrl || settings.instagramUrl || settings.twitterUrl) ? (
+              <div className="flex space-x-4">
+                {settings.facebookUrl && (
+                  <a 
+                    href={settings.facebookUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    title="Follow us on Facebook"
+                  >
+                    <Facebook className="w-6 h-6" />
+                  </a>
+                )}
+                {settings.instagramUrl && (
+                  <a 
+                    href={settings.instagramUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    title="Follow us on Instagram"
+                  >
+                    <Instagram className="w-6 h-6" />
+                  </a>
+                )}
+                {settings.twitterUrl && (
+                  <a 
+                    href={settings.twitterUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="hover:text-white transition transform hover:scale-110 duration-200"
+                    title="Follow us on Twitter"
+                  >
+                    <Twitter className="w-6 h-6" />
+                  </a>
+                )}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">Connect with us on social media!</p>
+            )}
           </div>
         </div>
 
