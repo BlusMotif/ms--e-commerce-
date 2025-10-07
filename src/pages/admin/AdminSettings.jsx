@@ -3,7 +3,7 @@ import { ref, onValue, set, get } from 'firebase/database';
 import { database, auth } from '../../config/firebase';
 import { sendPasswordResetEmail } from 'firebase/auth';
 import { toast } from 'react-hot-toast';
-import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Save, Store, MapPin, Phone, Mail, Globe, Lock, Key, ShieldCheck, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 const AdminSettings = () => {
@@ -24,6 +24,7 @@ const AdminSettings = () => {
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
+    socialMediaLinks: [],
     maxUploadSizeMB: 2, // Maximum upload size in MB
   });
 
@@ -58,6 +59,7 @@ const AdminSettings = () => {
           facebookUrl: dbSettings.facebookUrl || '',
           instagramUrl: dbSettings.instagramUrl || '',
           twitterUrl: dbSettings.twitterUrl || '',
+          socialMediaLinks: dbSettings.socialMediaLinks || [],
           maxUploadSizeMB: dbSettings.maxUploadSizeMB || 2,
         });
       }
@@ -71,6 +73,33 @@ const AdminSettings = () => {
     setSettings({
       ...settings,
       [name]: value,
+    });
+  };
+
+  const handleAddSocialMedia = () => {
+    setSettings({
+      ...settings,
+      socialMediaLinks: [
+        ...settings.socialMediaLinks,
+        { platform: '', url: '', icon: 'link' }
+      ]
+    });
+  };
+
+  const handleSocialMediaChange = (index, field, value) => {
+    const updatedLinks = [...settings.socialMediaLinks];
+    updatedLinks[index][field] = value;
+    setSettings({
+      ...settings,
+      socialMediaLinks: updatedLinks
+    });
+  };
+
+  const handleRemoveSocialMedia = (index) => {
+    const updatedLinks = settings.socialMediaLinks.filter((_, i) => i !== index);
+    setSettings({
+      ...settings,
+      socialMediaLinks: updatedLinks
     });
   };
 
@@ -95,6 +124,7 @@ const AdminSettings = () => {
         facebookUrl: settings.facebookUrl || '',
         instagramUrl: settings.instagramUrl || '',
         twitterUrl: settings.twitterUrl || '',
+        socialMediaLinks: settings.socialMediaLinks || [],
         maxUploadSizeMB: parseFloat(settings.maxUploadSizeMB) || 2,
         updatedAt: Date.now(),
       };
@@ -466,6 +496,7 @@ const AdminSettings = () => {
           </h2>
           
           <div className="space-y-4">
+            {/* Default Social Media */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Facebook URL
@@ -506,6 +537,70 @@ const AdminSettings = () => {
                 className="input"
                 placeholder="https://twitter.com/yourpage"
               />
+            </div>
+
+            {/* Divider */}
+            <div className="border-t border-gray-200 pt-4 mt-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-md font-semibold text-gray-800">Additional Social Media</h3>
+                <button
+                  type="button"
+                  onClick={handleAddSocialMedia}
+                  className="btn-outline flex items-center space-x-2 text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Platform</span>
+                </button>
+              </div>
+
+              {settings.socialMediaLinks && settings.socialMediaLinks.length > 0 && (
+                <div className="space-y-3">
+                  {settings.socialMediaLinks.map((link, index) => (
+                    <div key={index} className="flex gap-3 items-start p-4 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Platform Name
+                          </label>
+                          <input
+                            type="text"
+                            value={link.platform}
+                            onChange={(e) => handleSocialMediaChange(index, 'platform', e.target.value)}
+                            className="input text-sm"
+                            placeholder="e.g., LinkedIn, TikTok, YouTube"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">
+                            Profile URL
+                          </label>
+                          <input
+                            type="url"
+                            value={link.url}
+                            onChange={(e) => handleSocialMediaChange(index, 'url', e.target.value)}
+                            className="input text-sm"
+                            placeholder="https://..."
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSocialMedia(index)}
+                        className="mt-6 p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
+                        title="Remove"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {(!settings.socialMediaLinks || settings.socialMediaLinks.length === 0) && (
+                <p className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                  No additional social media links added. Click "Add Platform" to get started.
+                </p>
+              )}
             </div>
           </div>
         </div>

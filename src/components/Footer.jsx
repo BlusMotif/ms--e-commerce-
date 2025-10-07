@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
-import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from 'lucide-react';
+import { Mail, Phone, MapPin, Facebook, Instagram, Twitter, Globe } from 'lucide-react';
 
 const Footer = () => {
   const currentYear = new Date().getFullYear();
@@ -13,6 +13,7 @@ const Footer = () => {
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
+    socialMediaLinks: [],
   });
 
   useEffect(() => {
@@ -27,6 +28,7 @@ const Footer = () => {
           facebookUrl: data.facebookUrl || '',
           instagramUrl: data.instagramUrl || '',
           twitterUrl: data.twitterUrl || '',
+          socialMediaLinks: data.socialMediaLinks || [],
         });
       }
     });
@@ -110,8 +112,8 @@ const Footer = () => {
           {/* Social Media */}
           <div>
             <h3 className="text-white text-lg font-bold mb-4">Follow Us</h3>
-            {(settings.facebookUrl || settings.instagramUrl || settings.twitterUrl) ? (
-              <div className="flex space-x-4">
+            {(settings.facebookUrl || settings.instagramUrl || settings.twitterUrl || (settings.socialMediaLinks && settings.socialMediaLinks.length > 0)) ? (
+              <div className="flex flex-wrap gap-4">
                 {settings.facebookUrl && (
                   <a 
                     href={settings.facebookUrl} 
@@ -145,6 +147,21 @@ const Footer = () => {
                     <Twitter className="w-6 h-6" />
                   </a>
                 )}
+                {settings.socialMediaLinks && settings.socialMediaLinks.map((link, index) => (
+                  link.url && link.platform && (
+                    <a 
+                      key={index}
+                      href={link.url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="group hover:text-white transition transform hover:scale-110 duration-200 flex flex-col items-center"
+                      title={`Follow us on ${link.platform}`}
+                    >
+                      <Globe className="w-6 h-6" />
+                      <span className="text-xs mt-1 opacity-75 group-hover:opacity-100">{link.platform}</span>
+                    </a>
+                  )
+                ))}
               </div>
             ) : (
               <p className="text-sm text-gray-400">Connect with us on social media!</p>
