@@ -15,7 +15,12 @@ const NotificationsPage = () => {
   const [filter, setFilter] = useState('all'); // all, unread, read
 
   useEffect(() => {
-    if (!user?.uid) return;
+    if (!user?.uid) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
 
     // Fetch user-specific notifications
     const userNotificationsRef = ref(database, `notifications/${user.uid}`);
@@ -73,10 +78,14 @@ const NotificationsPage = () => {
         setLoading(false);
       });
 
+      // Return cleanup for announcements subscription
       return () => unsubscribeAnnouncements();
     });
 
-    return () => unsubscribeUser();
+    return () => {
+      unsubscribeUser();
+      setLoading(false);
+    };
   }, [user, role, updateNotificationCount]);
 
   const handleMarkAsRead = async (notificationId, source) => {

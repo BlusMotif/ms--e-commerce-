@@ -19,6 +19,8 @@ const AdminSettings = () => {
     deliveryFee: 10,
     pickupLocations: 'accra,tema,kumasi',
     whatsappNumber: '+233 XX XXX XXXX',
+    customerServicePhone: '+233 XX XXX XXXX',
+    customerServicePhone2: '',
     facebookUrl: '',
     instagramUrl: '',
     twitterUrl: '',
@@ -384,6 +386,42 @@ const AdminSettings = () => {
               />
               <p className="text-xs text-gray-500 mt-1">
                 Used for customer support and order inquiries
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Phone className="w-4 h-4 inline mr-2" />
+                Customer Service Phone (Primary)
+              </label>
+              <input
+                type="tel"
+                name="customerServicePhone"
+                value={settings.customerServicePhone}
+                onChange={handleInputChange}
+                className="input"
+                placeholder="+233 XX XXX XXXX"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Primary phone number for customer orders and inquiries
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                <Phone className="w-4 h-4 inline mr-2" />
+                Customer Service Phone (Secondary)
+              </label>
+              <input
+                type="tel"
+                name="customerServicePhone2"
+                value={settings.customerServicePhone2}
+                onChange={handleInputChange}
+                className="input"
+                placeholder="+233 XX XXX XXXX (Optional)"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Secondary phone number for backup contact (optional)
               </p>
             </div>
           </div>

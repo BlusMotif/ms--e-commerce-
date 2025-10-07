@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ref, onValue } from 'firebase/database';
 import { database } from '../config/firebase';
 import { useAuthStore } from '../store/authStore';
-import { ChevronLeft, ChevronRight, ArrowRight, ShoppingBag, Package } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ArrowRight, ShoppingBag, Package, Phone, MessageCircle } from 'lucide-react';
 
 const HomePage = () => {
   const { user, role } = useAuthStore();
@@ -13,6 +13,7 @@ const HomePage = () => {
   const [categories, setCategories] = useState([]);
   const [currentBanner, setCurrentBanner] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState({});
 
   // Redirect admin/agent away from home page - they shouldn't make purchases
   useEffect(() => {
@@ -27,9 +28,10 @@ const HomePage = () => {
     let bannersLoaded = false;
     let productsLoaded = false;
     let categoriesLoaded = false;
+    let settingsLoaded = false;
 
     const checkAllLoaded = () => {
-      if (bannersLoaded && productsLoaded && categoriesLoaded) {
+      if (bannersLoaded && productsLoaded && categoriesLoaded && settingsLoaded) {
         setLoading(false);
       }
     };
@@ -77,10 +79,21 @@ const HomePage = () => {
       checkAllLoaded();
     });
 
+    // Fetch settings for call numbers
+    const settingsRef = ref(database, 'settings');
+    const unsubscribeSettings = onValue(settingsRef, (snapshot) => {
+      if (snapshot.exists()) {
+        setSettings(snapshot.val());
+      }
+      settingsLoaded = true;
+      checkAllLoaded();
+    });
+
     return () => {
       unsubscribeBanners();
       unsubscribeProducts();
       unsubscribeCategories();
+      unsubscribeSettings();
     };
   }, []);
 
@@ -211,7 +224,7 @@ const HomePage = () => {
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <h2 className="text-2xl font-bold mb-6 text-center">Shop by Category</h2>
         <div className="flex justify-center">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 max-w-fit">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 justify-items-center">
             {categories.map((category) => (
               <Link
                 key={category.id}
@@ -301,6 +314,131 @@ const HomePage = () => {
                   </div>
                 </Link>
               ))}
+            </div>
+            
+            {/* Innovative View All Button */}
+            <div className="mt-8 text-center">
+              <Link 
+                to="/products" 
+                className="inline-flex items-center justify-center px-8 py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-primary-700 hover:to-primary-800 transform hover:-translate-y-1 transition-all duration-300 group"
+              >
+                <ShoppingBag className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                <span>Explore All Products</span>
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Link>
+              <p className="text-gray-600 text-sm mt-3">
+                Discover our complete collection of premium products
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Call to Order Section */}
+      {(settings.customerServicePhone || settings.whatsappNumber) && (
+        <section className="bg-gradient-to-br from-primary-50 to-primary-100 py-16">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                Need Help? Call to Order
+              </h2>
+              <p className="text-lg text-gray-700 max-w-2xl mx-auto">
+                Speak directly with our customer service team. We're here to help you place orders, 
+                answer questions, and provide personalized assistance.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {/* Primary Phone */}
+              {settings.customerServicePhone && (
+                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                  <div className="bg-gradient-to-r from-primary-600 to-primary-700 p-6">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                        <Phone className="w-8 h-8 text-white" />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white text-center">Primary Line</h3>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-3xl font-bold text-center text-gray-900 mb-4">
+                      {settings.customerServicePhone}
+                    </p>
+                    <a
+                      href={`tel:${settings.customerServicePhone}`}
+                      className="block w-full bg-primary-600 hover:bg-primary-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
+                    >
+                      <Phone className="w-5 h-5 inline mr-2" />
+                      Call Now
+                    </a>
+                    <p className="text-sm text-gray-600 text-center mt-3">
+                      Available 24/7 for your convenience
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Secondary Phone or WhatsApp */}
+              {(settings.customerServicePhone2 || settings.whatsappNumber) && (
+                <div className="bg-white rounded-2xl shadow-lg hover:shadow-xl transition-shadow duration-300 overflow-hidden">
+                  <div className="bg-gradient-to-r from-green-600 to-green-700 p-6">
+                    <div className="flex items-center justify-center mb-2">
+                      <div className="bg-white bg-opacity-20 p-3 rounded-full">
+                        {settings.customerServicePhone2 ? (
+                          <Phone className="w-8 h-8 text-white" />
+                        ) : (
+                          <MessageCircle className="w-8 h-8 text-white" />
+                        )}
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-white text-center">
+                      {settings.customerServicePhone2 ? 'Secondary Line' : 'WhatsApp'}
+                    </h3>
+                  </div>
+                  <div className="p-6">
+                    <p className="text-3xl font-bold text-center text-gray-900 mb-4">
+                      {settings.customerServicePhone2 || settings.whatsappNumber}
+                    </p>
+                    <a
+                      href={
+                        settings.customerServicePhone2
+                          ? `tel:${settings.customerServicePhone2}`
+                          : `https://wa.me/${settings.whatsappNumber.replace(/\s+/g, '')}`
+                      }
+                      target={settings.customerServicePhone2 ? '_self' : '_blank'}
+                      rel={settings.customerServicePhone2 ? '' : 'noopener noreferrer'}
+                      className="block w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors duration-200 text-center"
+                    >
+                      {settings.customerServicePhone2 ? (
+                        <>
+                          <Phone className="w-5 h-5 inline mr-2" />
+                          Call Now
+                        </>
+                      ) : (
+                        <>
+                          <MessageCircle className="w-5 h-5 inline mr-2" />
+                          Chat on WhatsApp
+                        </>
+                      )}
+                    </a>
+                    <p className="text-sm text-gray-600 text-center mt-3">
+                      {settings.customerServicePhone2 ? 'Alternative contact line' : 'Quick response via WhatsApp'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Additional Info */}
+            <div className="mt-10 text-center">
+              <div className="inline-flex items-center justify-center space-x-2 bg-white bg-opacity-80 px-6 py-3 rounded-full shadow">
+                <div className="flex items-center space-x-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                  <span className="text-sm font-medium text-gray-700">Online Now</span>
+                </div>
+                <span className="text-gray-400">|</span>
+                <span className="text-sm text-gray-600">Fast response guaranteed</span>
+              </div>
             </div>
           </div>
         </section>
